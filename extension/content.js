@@ -1,0 +1,446 @@
+/*
+ * Send Guard for Gmail
+ * 攔截 Gmail 的「傳送」按鈕與 Ctrl/Cmd+Enter，先顯示所有收件人並倒數，
+ * 倒數結束或按「立即寄出」才真正送出。全部在本機執行，不連任何外部伺服器。
+ */
+(() => {
+  'use strict';
+
+  // ---------- 設定 ----------
+  const DEFAULTS = {
+    enabled: true,
+    countdown: 15,                 // 秒
+    internalDomains: '',           // 逗號或換行分隔；空白 = 自動用登入帳號的網域
+    groupPatterns: 'all@\neveryone@\nall-staff@\nallstaff@\nstaff@\ncompany@',
+    alertPatterns: '',             // 特別警示名單：完整地址、@網域 或 網域、name@
+    holdOnWarning: true            // 有紅色警示（群組 / 特別警示 / 多個外部網域 / 讀不到收件人）時不自動寄出
+  };
+  let cfg = { ...DEFAULTS };
+  // 告訴背景程式目前是否啟用，讓工具列圖示在這個 Gmail 分頁顯示綠點 / 灰點
+  function reportStatus() {
+    try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled }, () => void chrome.runtime.lastError); }
+    catch (_) { /* 擴充套件剛被重新載入時舊分頁會失敗，忽略 */ }
+  }
+  try {
+    chrome.storage.sync.get(DEFAULTS, (v) => { cfg = { ...DEFAULTS, ...v }; reportStatus(); });
+    chrome.storage.onChanged.addListener((changes) => {
+      for (const k of Object.keys(changes)) cfg[k] = changes[k].newValue;
+      reportStatus();
+    });
+    // 點工具列圖示時，彈出視窗會來問這個分頁的狀態
+    chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+      if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled });
+    });
+  } catch (_) { /* 測試環境沒有 chrome.storage 時用預設值 */ }
+
+  // ---------- 辨識 Gmail 元素 ----------
+  // 傳送按鈕的 tooltip 例如「傳送 ‪(Ctrl-Enter)‬」或「Send ‪(Ctrl-Enter)‬」
+  const SEND_LABEL_RE = /^\s*(?:傳送|傳送郵件|发送|發送|Send|送信|보내기)\s*(?:[‪‬(（].*)?$/i;
+  const FIELD_RES = [
+    ['bcc', /^\s*(?:密件副本|密送|Bcc)/i],
+    ['cc',  /^\s*(?:副本|抄送|Cc)/i],
+    ['to',  /^\s*(?:收件者|收件人|To\b|宛先)/i],
+    ['from', /^\s*(?:寄件者|发件人|寄件人|From\b|差出人)/i]
+  ];
+  const EMAIL_RE = /[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/;
+  const EDITABLE_SEL = '[g_editable="true"], div[contenteditable="true"][role="textbox"]';
+
+  function isSendButtonEl(btn) {
+    if (!btn || btn.getAttribute('role') !== 'button') return false;
+    if (btn.hasAttribute('aria-haspopup')) return false;          // 排除「更多傳送選項」下拉
+    const label = (btn.getAttribute('data-tooltip') || btn.getAttribute('aria-label') || '').trim();
+    return btn.classList.contains('aoO') || SEND_LABEL_RE.test(label);
+  }
+
+  // 撰寫視窗的範圍。真實 Gmail 裡「內文 + 傳送按鈕」在同一個 table，
+  // 收件人與主旨在旁邊的 form，所以找到內文後還要繼續往上，直到連主旨欄也包進來。
+  // 往上時若碰到第二顆傳送按鈕（另一個撰寫視窗）就停，避免混到別封信的收件人。
+  const HEADER_SEL = 'input[name="subjectbox"]';
+
+  function countSendButtons(n) {
+    let c = 0;
+    for (const b of n.querySelectorAll('[role="button"]')) if (isSendButtonEl(b)) c++;
+    return c;
+  }
+
+  function composeRootOf(el) {
+    let n = el && el.parentElement;
+    let body = null;
+    for (let i = 0; n && i < 30; i++, n = n.parentElement) {
+      if (!body) {
+        if (!n.querySelector(EDITABLE_SEL)) continue;
+        body = n;
+      } else if (countSendButtons(n) > 1) {
+        break;
+      }
+      if (n.querySelector(HEADER_SEL)) return n;
+    }
+    return body;
+  }
+
+  function sendButtonFromTarget(target) {
+    if (!(target instanceof Element)) return null;
+    const btn = target.closest('[role="button"]');
+    if (!isSendButtonEl(btn)) return null;
+    return composeRootOf(btn) ? btn : null;
+  }
+
+  // 從游標所在位置（內文 / 主旨）往上找最近的一顆傳送按鈕
+  function sendButtonNear(el) {
+    let n = el instanceof Element ? el : null;
+    for (let i = 0; n && i < 30; i++, n = n.parentElement) {
+      for (const c of n.querySelectorAll('[role="button"]')) {
+        if (isSendButtonEl(c) && composeRootOf(c)) return c;
+      }
+    }
+    return null;
+  }
+
+  // ---------- 讀取收件人 ----------
+  function fieldOf(chip, root) {
+    let n = chip.parentElement;
+    for (let i = 0; n && n !== root.parentElement && i < 12; i++, n = n.parentElement) {
+      const labelled = n.querySelectorAll('input[aria-label], textarea[aria-label], [role="combobox"][aria-label], [role="listbox"][aria-label]');
+      for (const l of labelled) {
+        const label = l.getAttribute('aria-label') || '';
+        for (const [field, re] of FIELD_RES) if (re.test(label)) return field;
+      }
+      const own = n.getAttribute && n.getAttribute('aria-label');
+      if (own) for (const [field, re] of FIELD_RES) if (re.test(own)) return field;
+    }
+    return 'unknown';
+  }
+
+  function parseAddressList(str) {
+    // "王小明 <a@b.com>, c@d.com"
+    const out = [];
+    for (const part of str.split(/[,;]\s*/)) {
+      const m = part.match(EMAIL_RE);
+      if (!m) continue;
+      const name = part.replace(/<[^>]*>/, '').replace(m[0], '').replace(/["']/g, '').trim();
+      out.push({ email: m[0].toLowerCase(), name });
+    }
+    return out;
+  }
+
+  function readRecipients(root) {
+    const result = { to: [], cc: [], bcc: [], unknown: [] };
+    const seen = new Set();
+    const add = (field, email, name) => {
+      if (!email) return;
+      email = email.toLowerCase();
+      const key = field + '|' + email;
+      if (seen.has(key)) return;
+      seen.add(key);
+      (result[field] || result.unknown).push({ email, name: (name || '').trim() });
+    };
+
+    // 方法 1：隱藏欄位 input[name=to|cc|bcc]
+    for (const field of ['to', 'cc', 'bcc']) {
+      root.querySelectorAll(`input[name="${field}"], textarea[name="${field}"]`).forEach((inp) => {
+        if (inp.value) parseAddressList(inp.value).forEach((r) => add(field, r.email, r.name));
+      });
+    }
+
+    // 方法 2：收件人膠囊（新版 data-hovercard-id、舊版 span[email]）
+    const chips = root.querySelectorAll('[data-hovercard-id], span[email], div[email]');
+    for (const chip of chips) {
+      if (chip.closest(EDITABLE_SEL)) continue;                    // 內文、引用內容裡的名字不算
+      const raw = chip.getAttribute('data-hovercard-id') || chip.getAttribute('email') || '';
+      const m = raw.match(EMAIL_RE);
+      if (!m) continue;
+      const field = fieldOf(chip, root);
+      if (field === 'from') continue;
+      const name = chip.getAttribute('data-name') || chip.getAttribute('name') || (chip.textContent || '').replace(m[0], '').trim();
+      add(field, m[0], name && name !== m[0] ? name : '');
+    }
+
+    // 已經在明確欄位出現過的地址，從 unknown 移除
+    const known = new Set([...result.to, ...result.cc, ...result.bcc].map((r) => r.email));
+    result.unknown = result.unknown.filter((r) => !known.has(r.email));
+    return result;
+  }
+
+  function readSubject(root) {
+    const s = root.querySelector('input[name="subjectbox"]');
+    if (s && s.value) return s.value;
+    const h = document.querySelector('h2.hP');
+    return h ? h.textContent.trim() : '';
+  }
+
+  function readAttachments(root) {
+    const names = new Set();
+    root.querySelectorAll('.dL .vI, [data-attachment-name]').forEach((el) => {
+      const t = (el.getAttribute('data-attachment-name') || el.textContent || '').trim();
+      if (t) names.add(t);
+    });
+    return [...names];
+  }
+
+  // ---------- 風險判斷 ----------
+  function accountDomain() {
+    const m = (document.title || '').match(EMAIL_RE);
+    return m ? m[0].split('@')[1].toLowerCase() : '';
+  }
+
+  function listFrom(text) {
+    return String(text || '').split(/[\n,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function internalDomains() {
+    const list = listFrom(cfg.internalDomains).map((d) => d.replace(/^@/, ''));
+    if (!list.length) { const d = accountDomain(); if (d) list.push(d); }
+    return list;
+  }
+
+  function isGroup(email) {
+    const local = email.split('@')[0];
+    return listFrom(cfg.groupPatterns).some((p) => {
+      if (p.endsWith('@')) return local === p.slice(0, -1);
+      if (p.includes('@')) return email === p;
+      return local === p;
+    });
+  }
+
+  // 特別警示名單：a@b.com = 只比對該地址；@b.com 或 b.com = 整個網域（含子網域）；a@ = 任何網域的同名信箱
+  function isAlert(email) {
+    const [local, domain] = email.split('@');
+    return listFrom(cfg.alertPatterns).some((p) => {
+      if (p.endsWith('@')) return local === p.slice(0, -1);
+      if (p.includes('@') && !p.startsWith('@')) return email === p;
+      const d = p.replace(/^@/, '');
+      return domain === d || domain.endsWith('.' + d);
+    });
+  }
+
+  function analyze(recips) {
+    const internal = internalDomains();
+    const all = [...recips.to, ...recips.cc, ...recips.bcc, ...recips.unknown];
+    for (const r of all) {
+      const d = r.email.split('@')[1];
+      r.external = internal.length ? !internal.some((i) => d === i || d.endsWith('.' + i)) : false;
+      r.group = isGroup(r.email);
+      r.alert = isAlert(r.email);
+    }
+    // level: 'high' = 暫停自動寄出；'info' = 只提示
+    const warnings = [];
+    if (!all.length) warnings.push({ level: 'high', text: '讀不到任何收件人，可能是 Gmail 介面改版。請自行確認收件人後再寄出。' });
+    const ext = all.filter((r) => r.external);
+    if (ext.length) {
+      const domains = [...new Set(ext.map((r) => r.email.split('@')[1]))];
+      warnings.push({ level: 'info', text: `含 ${ext.length} 位外部收件人（${domains.join('、')}）` });
+      if (domains.length > 1) warnings.push({ level: 'high', text: `同時寄給 ${domains.length} 個不同的外部網域，請確認沒有混到其他客戶` });
+    }
+    const groups = all.filter((r) => r.group);
+    if (groups.length) warnings.push({ level: 'high', text: `含群組地址：${groups.map((r) => r.email).join('、')}` });
+    const alerts = all.filter((r) => r.alert);
+    if (alerts.length) warnings.push({ level: 'high', text: `含特別警示地址：${[...new Set(alerts.map((r) => r.email))].join('、')}` });
+    if (!internal.length) warnings.push({ level: 'info', text: '無法判斷公司網域，請到擴充套件選項設定' });
+    return { all, warnings };
+  }
+
+  // ---------- 對話框 ----------
+  let overlayHost = null;
+  let bypass = false;
+
+  const CSS = `
+    :host { all: initial; }
+    .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 2147483647;
+      display: flex; align-items: center; justify-content: center;
+      font: 14px/1.5 "Google Sans", "Noto Sans TC", "Microsoft JhengHei", Roboto, Arial, sans-serif; }
+    .dlg { background: #fff; color: #1f1f1f; width: min(560px, 92vw); max-height: 86vh; display: flex;
+      flex-direction: column; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); overflow: hidden; }
+    .hd { padding: 18px 22px 8px; font-size: 18px; font-weight: 600; }
+    .bd { padding: 4px 22px 12px; overflow: auto; }
+    .subj { color: #444; margin-bottom: 10px; word-break: break-all; }
+    .subj b { color: #1f1f1f; }
+    .warn { background: #fdecea; color: #a50e0e; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .info { background: #fef7e0; color: #7a4f01; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .warn div + div, .info div + div { margin-top: 4px; }
+    .sec { margin-top: 10px; }
+    .sec h4 { margin: 0 0 6px; font-size: 13px; color: #5f6368; font-weight: 600; }
+    .r { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; }
+    .r:nth-child(odd) { background: #f6f8fc; }
+    .r .em { font-family: Consolas, "Roboto Mono", monospace; font-size: 13px; word-break: break-all; }
+    .r .nm { color: #5f6368; }
+    .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+    .tag.ext { background: #fce8e6; color: #c5221f; }
+    .tag.grp { background: #fef7e0; color: #b06000; }
+    .tag.alert { background: #c5221f; color: #fff; }
+    .att { color: #444; margin-top: 10px; word-break: break-all; }
+    .ft { border-top: 1px solid #e0e0e0; padding: 12px 22px 16px; }
+    .bar { height: 4px; background: #e8eaed; border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+    .bar i { display: block; height: 100%; background: #0b57d0; width: 100%; transition: width 1s linear; }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .msg { flex: 1; color: #444; }
+    button { font: inherit; border-radius: 999px; padding: 8px 18px; cursor: pointer; border: 1px solid #747775; background: #fff; color: #0b57d0; }
+    button.primary { background: #0b57d0; color: #fff; border-color: #0b57d0; }
+    button:focus-visible { outline: 3px solid #a8c7fa; outline-offset: 1px; }
+  `;
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderSection(title, list) {
+    if (!list.length) return '';
+    const rows = list.map((r) => `
+      <div class="r">
+        <span class="em">${esc(r.email)}</span>
+        ${r.name ? `<span class="nm">${esc(r.name)}</span>` : ''}
+        ${r.external ? '<span class="tag ext">外部</span>' : ''}
+        ${r.group ? '<span class="tag grp">群組</span>' : ''}
+        ${r.alert ? '<span class="tag alert">特別警示</span>' : ''}
+      </div>`).join('');
+    return `<div class="sec"><h4>${title}（${list.length}）</h4>${rows}</div>`;
+  }
+
+  function openDialog(sendBtn) {
+    if (overlayHost) return;
+    const root = composeRootOf(sendBtn) || document.body;
+    const recips = readRecipients(root);
+    const { all, warnings } = analyze(recips);
+    const subject = readSubject(root);
+    const atts = readAttachments(root);
+    const high = warnings.filter((w) => w.level === 'high');
+    const info = warnings.filter((w) => w.level === 'info');
+    const hold = cfg.holdOnWarning && high.length > 0;
+    let remaining = Math.max(1, parseInt(cfg.countdown, 10) || 15);
+    const total = remaining;
+
+    overlayHost = document.createElement('div');
+    overlayHost.id = 'gsg-overlay-host';
+    const shadow = overlayHost.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `
+      <style>${CSS}</style>
+      <div class="backdrop">
+        <div class="dlg" role="dialog" aria-modal="true" aria-label="確認寄出">
+          <div class="hd">確認寄出（共 ${all.length} 位收件人）</div>
+          <div class="bd">
+            <div class="subj">主旨：<b>${esc(subject || '（無主旨）')}</b></div>
+            ${high.length ? `<div class="warn">${high.map((w) => `<div>⚠ ${esc(w.text)}</div>`).join('')}</div>` : ''}
+            ${info.length ? `<div class="info">${info.map((w) => `<div>ℹ ${esc(w.text)}</div>`).join('')}</div>` : ''}
+            ${renderSection('收件者', recips.to)}
+            ${renderSection('副本', recips.cc)}
+            ${renderSection('密件副本', recips.bcc)}
+            ${renderSection('收件人（欄位不明）', recips.unknown)}
+            ${atts.length ? `<div class="att">📎 附件：${atts.map(esc).join('、')}</div>` : ''}
+          </div>
+          <div class="ft">
+            ${hold ? '' : '<div class="bar"><i></i></div>'}
+            <div class="row">
+              <span class="msg"></span>
+              <button class="cancel">取消，返回編輯</button>
+              <button class="primary send">立即寄出</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.documentElement.appendChild(overlayHost);
+
+    const $ = (s) => shadow.querySelector(s);
+    const msg = $('.msg');
+    const bar = $('.bar i');
+    let timer = null;
+    let paused = false;
+
+    const close = () => {
+      if (timer) clearInterval(timer);
+      if (overlayHost) overlayHost.remove();
+      overlayHost = null;
+    };
+    const cancel = () => { close(); };
+    const send = () => { close(); reallySend(sendBtn); };
+    overlayHost._gsgCancel = cancel;
+
+    $('.cancel').addEventListener('click', cancel);
+    $('.send').addEventListener('click', send);
+
+    if (hold) {
+      msg.textContent = '有警示，不會自動寄出，請確認後手動按「立即寄出」。';
+    } else {
+      // 清單長到一頁顯示不完時，要先捲到最底才開始倒數（仍可直接按「立即寄出」）
+      const bd = $('.bd');
+      const atBottom = () => bd.scrollTop + bd.clientHeight >= bd.scrollHeight - 4;
+      let waiting = !atBottom();
+      const tick = () => {
+        msg.textContent = waiting ? '收件人較多，請往下捲到最後確認，才會開始倒數。'
+          : paused ? '已暫停倒數' : `${remaining} 秒後自動寄出（點清單可暫停）`;
+        if (bar) bar.style.width = `${(remaining / total) * 100}%`;
+      };
+      tick();
+      const recheck = () => { if (waiting && atBottom()) { waiting = false; tick(); } };
+      bd.addEventListener('scroll', recheck);
+      // 視窗被放大到整份清單都看得到時，不會有捲動事件，所以尺寸改變時也要重新檢查
+      if (typeof ResizeObserver === 'function') new ResizeObserver(recheck).observe(bd);
+      timer = setInterval(() => {
+        if (paused || waiting) return;
+        remaining -= 1;
+        if (remaining <= 0) { send(); return; }
+        tick();
+      }, 1000);
+      $('.bd').addEventListener('click', () => { paused = true; tick(); });
+    }
+
+    // 預設焦點放在「取消」，避免連按 Enter 直接寄出
+    setTimeout(() => $('.cancel').focus(), 0);
+  }
+
+  function reallySend(btn) {
+    if (!btn.isConnected) {
+      alert('Send Guard for Gmail：找不到原本的傳送按鈕（撰寫視窗可能已關閉），信件沒有寄出。');
+      return;
+    }
+    bypass = true;
+    try {
+      const r = btn.getBoundingClientRect();
+      const o = { bubbles: true, cancelable: true, composed: true, view: window, button: 0,
+        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+      btn.dispatchEvent(new PointerEvent('pointerdown', o));
+      btn.dispatchEvent(new MouseEvent('mousedown', o));
+      btn.dispatchEvent(new PointerEvent('pointerup', o));
+      btn.dispatchEvent(new MouseEvent('mouseup', o));
+      btn.dispatchEvent(new MouseEvent('click', o));
+    } finally {
+      setTimeout(() => { bypass = false; }, 300);
+    }
+  }
+
+  // ---------- 攔截事件（window capture，比 Gmail 自己的 handler 更早） ----------
+  const insideOverlay = (e) => overlayHost && e.composedPath().includes(overlayHost);
+
+  function onPointer(e) {
+    if (bypass || !cfg.enabled || insideOverlay(e)) return;
+    const btn = sendButtonFromTarget(e.target);
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.type === 'click') openDialog(btn);
+  }
+  ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach((t) =>
+    window.addEventListener(t, onPointer, true));
+
+  function onKey(e) {
+    if (bypass || !cfg.enabled) return;
+
+    // 對話框開著時：Esc = 取消；其他按鍵不讓 Gmail 收到（避免觸發 Gmail 快捷鍵）
+    if (overlayHost) {
+      if (e.type === 'keydown' && e.key === 'Escape') {
+        e.preventDefault();
+        overlayHost._gsgCancel();
+      }
+      e.stopImmediatePropagation();
+      return;
+    }
+
+    const ctrlEnter = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+    const onSendBtn = (e.key === 'Enter' || e.key === ' ') && sendButtonFromTarget(e.target);
+    if (!ctrlEnter && !onSendBtn) return;
+    const btn = onSendBtn || sendButtonNear(e.target);
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.type === 'keydown' && !e.repeat) openDialog(btn);
+  }
+  ['keydown', 'keypress', 'keyup'].forEach((t) => window.addEventListener(t, onKey, true));
+})();

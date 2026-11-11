@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 14px/1.5 "Noto Sans TC", "Microsoft JhengHei", Roboto, Arial, sans-serif; width: 280px; margin: 0; padding: 14px 16px; color: #1f1f1f; }
+  h1 { font-size: 15px; margin: 0 0 10px; }
+  .state { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #80868b; flex: none; }
+  .on .dot { background: #188038; }
+  .off .dot { background: #d93025; }
+  p { margin: 8px 0 12px; color: #444; font-size: 13px; }
+  button { font: inherit; padding: 6px 16px; border-radius: 999px; border: 1px solid #747775; background: #fff; color: #0b57d0; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>Send Guard for Gmail</h1>
+  <div class="state" id="state"><span class="dot"></span><span id="title">檢查中…</span></div>
+  <p id="detail"></p>
+  <button id="options">開啟設定</button>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>收件匣 - me@example.com - Example 郵件</title></head>
+<body>
+<div role="dialog" id="compose">
+  <!-- 跟真實 Gmail 一樣：收件人與主旨在 form，內文與傳送按鈕在旁邊的 table -->
+  <form>
+    <div class="fromrow"><span aria-label="寄件者">me@example.com</span></div>
+    <div class="row" id="torow"><div class="chips"></div><input aria-label="收件者"></div>
+    <div class="row" id="ccrow"><div class="chips"></div><input aria-label="副本"></div>
+    <input name="subjectbox" value="Q3 測試報告">
+  </form>
+  <table>
+    <tr><td>
+      <div g_editable="true" contenteditable="true" role="textbox" id="body">Hi, <span data-hovercard-id="quoted@other.com">quoted</span></div>
+      <div class="dL"><div class="vI">report_v3.xlsx</div></div>
+    </td></tr>
+    <tr><td>
+      <div role="button" class="T-I J-J5-Ji aoO v7 T-I-atl L3" data-tooltip="傳送 &#x202a;(Ctrl-Enter)&#x202c;" id="send" style="width:80px;height:30px;background:#0b57d0">傳送</div>
+      <div role="button" aria-haspopup="true" aria-label="更多傳送選項" id="more">▾</div>
+    </td></tr>
+  </table>
+</div>
+<script>
+  window.__sent = 0; window.__closed = false;
+  const scen = location.hash.slice(1) || 'normal';
+  const S = {
+    normal: { to: [['bob@example.com','Bob'], ['pm@customer-a.com','Alice PM']], cc: [['carol.lin@example.com','Carol Lin']] },
+    group:  { to: [['newhire@example.net','王小明']], cc: [['all@example.com','全公司']] },
+    mixed:  { to: [['pm@customer-a.com','A'], ['pm@customer-b.com','B']], cc: [] },
+    many:   { to: Array.from({ length: 100 }, (_, i) => ['user' + i + '@example.com', 'User ' + i]), cc: [] },
+  }[scen];
+  const fill = (rowId, list) => {
+    const c = document.querySelector('#' + rowId + ' .chips');
+    for (const [e, n] of list) { const d = document.createElement('div'); d.className = 'afV'; d.setAttribute('data-hovercard-id', e); d.setAttribute('data-name', n); d.textContent = n; c.appendChild(d); }
+  };
+  fill('torow', S.to); fill('ccrow', S.cc);
+  // Gmail-like: send fires on mouseup of the button, plus Ctrl+Enter keydown; Esc closes compose
+  document.getElementById('send').addEventListener('mouseup', () => { window.__sent++; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) window.__sent++;
+    if (e.key === 'Escape') window.__closed = true;
+  });
+</script>
+</body></html>
