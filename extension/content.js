@@ -302,16 +302,16 @@
       font: 14px/1.5 "Google Sans", "Noto Sans TC", "Microsoft JhengHei", Roboto, Arial, sans-serif; }
     .dlg { background: #fff; color: #1f1f1f; width: min(560px, 92vw); max-height: 86vh; display: flex;
       flex-direction: column; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); overflow: hidden; }
-    .hd { padding: 18px 22px 8px; font-size: 18px; font-weight: 600; }
-    .bd { padding: 4px 22px 12px; overflow: auto; }
+    .hd { padding: 18px 22px 8px; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+    .bd { padding: 4px 22px 12px; overflow-y: auto; overflow-x: hidden; overflow-wrap: anywhere; }
     .subj { color: #444; margin-bottom: 10px; word-break: break-all; }
     .subj b { color: #1f1f1f; }
-    .warn { background: #fdecea; color: #a50e0e; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
-    .info { background: #fef7e0; color: #7a4f01; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .warn { background: #fdecea; color: #a50e0e; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
+    .info { background: #fef7e0; color: #7a4f01; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
     .warn div + div, .info div + div { margin-top: 4px; }
     .sec { margin-top: 10px; }
     .sec h4 { margin: 0 0 6px; font-size: 13px; color: #5f6368; font-weight: 600; }
-    .r { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; }
+    .r { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; min-width: 0; }
     .r:nth-child(odd) { background: #f6f8fc; }
     .r .em { font-family: Consolas, "Roboto Mono", monospace; font-size: 13px; word-break: break-all; }
     .r .nm { color: #5f6368; }
@@ -534,6 +534,14 @@
           inBody: !!chip.closest(EDITABLE_SEL), field: fieldOf(chip, root),
           selected: chip.getAttribute('aria-selected') || '', ...describe(chip, root) });
       }
+      // 附件元素：不輸出檔名，只留副檔名與結構，用來確認附件的讀取方式是否正確
+      c.attachments = [];
+      for (const el of root.querySelectorAll('.dL .vI, [data-attachment-name], input[name="attach"], [download_url]')) {
+        const nm = (el.getAttribute('data-attachment-name') || el.textContent || '').trim();
+        c.attachments.push({ tag: el.tagName.toLowerCase(), ext: (nm.match(/.([A-Za-z0-9]{1,6})$/) || [, ''])[1], nameLen: nm.length,
+          via: el.hasAttribute('data-attachment-name') ? 'data-attachment-name' : el.matches('.dL .vI') ? '.dL .vI' : 'other', ...describe(el, root) });
+      }
+      c.attachmentsRead = readAttachments(root).length;
       const rec = readRecipients(root);
       for (const k of Object.keys(rec)) c.result[k] = rec[k].map((r) => maskEmail(r.email));
       out.composes.push(c);
