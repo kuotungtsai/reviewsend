@@ -15,21 +15,50 @@
     alertPatterns: '',             // 特別警示名單：完整地址、@網域 或 網域、name@
     holdOnWarning: true            // 有紅色警示（群組 / 特別警示 / 多個外部網域 / 讀不到收件人）時不自動寄出
   };
+  // user = 使用者自己存的設定；managed = IT 管理員下發的設定（沒有就是空的）。
+  // cfg 是兩者合併後實際採用的值。沒有 IT 設定時 cfg 就等於 user，行為和單機使用完全相同。
+  let user = { ...DEFAULTS };
+  let managed = {};
   let cfg = { ...DEFAULTS };
+
+  function mergeConfig() {
+    const out = { ...user };
+    // 名單類：IT 的名單和使用者自己的合併
+    for (const k of ['internalDomains', 'groupPatterns', 'alertPatterns']) {
+      if (typeof managed[k] === 'string' && managed[k].trim()) out[k] = managed[k] + '\n' + (user[k] || '');
+    }
+    // 數值與開關：IT 有設定就以 IT 為準
+    if (Number.isFinite(managed.countdown)) out.countdown = managed.countdown;
+    if (typeof managed.holdOnWarning === 'boolean') out.holdOnWarning = managed.holdOnWarning;
+    if (managed.forceEnabled === true) out.enabled = true;
+    cfg = out;
+  }
+
   // 告訴背景程式目前是否啟用，讓工具列圖示在這個 Gmail 分頁顯示綠點 / 灰點
   function reportStatus() {
     try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled }, () => void chrome.runtime.lastError); }
     catch (_) { /* 擴充套件剛被重新載入時舊分頁會失敗，忽略 */ }
   }
   try {
-    chrome.storage.sync.get(DEFAULTS, (v) => { cfg = { ...DEFAULTS, ...v }; reportStatus(); });
-    chrome.storage.onChanged.addListener((changes) => {
-      for (const k of Object.keys(changes)) cfg[k] = changes[k].newValue;
-      reportStatus();
+    chrome.storage.sync.get(DEFAULTS, (v) => { user = { ...DEFAULTS, ...v }; mergeConfig(); reportStatus(); });
+    try {
+      chrome.storage.managed.get(null, (v) => {
+        if (chrome.runtime.lastError || !v) return;        // 不是受管理的瀏覽器：維持空的
+        managed = v; mergeConfig(); reportStatus();
+      });
+    } catch (_) { /* 沒有受管理的設定 */ }
+    chrome.storage.onChanged.addListener((changes, area) => {
+      const target = area === 'managed' ? managed : area === 'sync' ? user : null;
+      if (!target) return;
+      for (const k of Object.keys(changes)) {
+        if (changes[k].newValue === undefined) { if (area === 'managed') delete target[k]; else target[k] = DEFAULTS[k]; }
+        else target[k] = changes[k].newValue;
+      }
+      mergeConfig(); reportStatus();
     });
     // 點工具列圖示時，彈出視窗會來問這個分頁的狀態
     chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-      if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled });
+      if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled, forced: managed.forceEnabled === true });
     });
   } catch (_) { /* 測試環境沒有 chrome.storage 時用預設值 */ }
 

@@ -91,6 +91,28 @@
 - 其他人安裝後按「上傳設定檔」選這個檔案，欄位會自動填好，確認後按「儲存」才會生效。
 - 設定檔裡包含公司網域與名單，請不要放進公開的地方。
 
+## 給 IT 管理員：統一下發設定（選用）
+
+這一節是選用的。沒有做任何設定時，擴充套件的行為和個人安裝完全相同，每個人用自己的設定。
+
+擴充套件支援 Chrome 的受管理設定（managed storage）。管理員下發後：
+
+- **公司內部網域、群組地址、特別警示名單**：與使用者自己填的合併。使用者可以再加，但不能移除管理員的項目。
+- **倒數秒數、有紅色警示時不自動寄出**：以管理員的值為準，設定頁上該欄位會鎖定。
+- **強制啟用**：`forceEnabled` 設為 `true` 時，使用者不能關閉寄出確認。
+- 沒有下發的項目，仍由使用者自己決定。
+
+設定頁上，由管理員下發的項目會以藍色標示「由管理員設定」。
+
+做法概要：
+
+1. 擴充套件需要先有固定的 ID，也就是先發佈到 Chrome 線上應用程式商店（可選不公開或僅限本機構），或由公司自行架設更新來源。
+2. 在 Google Workspace 管理後台的 Chrome 應用程式與擴充功能設定中，用 ID 加入這個擴充套件，並設為強制安裝。
+3. 在該擴充套件的政策欄位貼上 JSON。範例見 [docs/policy-example.json](docs/policy-example.json)，可用的項目定義在 `extension/managed_schema.json`。
+4. 在使用者的 Chrome 開 `chrome://policy`，可以確認擴充套件收到的值。
+
+管理後台的選單位置與格式可能隨 Google 更新而改變，請以當下的管理員說明文件為準。這項功能目前只用模擬的受管理設定測試過，尚未在實際的 Workspace 環境驗證。
+
 ## 寄信時會看到什麼
 
 照平常的方式寫信，按「傳送」或 Ctrl+Enter。信不會馬上寄出，會先出現確認視窗。
@@ -128,12 +150,13 @@
 send-guard-for-gmail/
 ├── extension/          ← Chrome 擴充套件本體（載入這個資料夾）
 │   ├── manifest.json
+│   ├── managed_schema.json  ← IT 可下發的設定項目定義
 │   ├── background.js   ← 第一次安裝時打開設定頁、在工具列圖示上畫運作狀態的圓點
 │   ├── content.js      ← 攔截傳送、讀收件人、顯示確認視窗
 │   ├── icons/
 │   ├── options.html / options.js   ← 設定頁
 │   └── popup.html / popup.js       ← 點工具列圖示顯示運作狀態
-├── docs/images/        ← README 用的截圖
+├── docs/               ← README 用的截圖、IT 政策範例
 └── test/
     ├── mock_gmail.html ← 模擬 Gmail 撰寫視窗
     └── run_test.py     ← Playwright 自動測試（29 項）

@@ -32,13 +32,42 @@ function isAlert(email, patterns) {
   });
 }
 
+// ---------- IT 管理員下發的設定（沒有就是空物件，頁面行為與單機使用相同） ----------
+let managed = {};
+let lastUser = { ...DEFAULTS };          // 使用者自己存的值；被鎖定的欄位儲存時沿用這份，不寫入 IT 的值
+const LISTS = ['internalDomains', 'groupPatterns', 'alertPatterns'];
+const managedList = (id) => (typeof managed[id] === 'string' ? managed[id].trim() : '');
+// 名單類欄位實際採用的內容 = IT 的名單 + 使用者自己填的
+const eff = (id) => (managedList(id) ? managedList(id) + '\n' : '') + $(id).value;
+const locked = {
+  countdown: () => Number.isFinite(managed.countdown),
+  holdOnWarning: () => typeof managed.holdOnWarning === 'boolean',
+  enabled: () => managed.forceEnabled === true
+};
+
+function applyManaged() {
+  for (const id of LISTS) {
+    const box = $('m-' + id);
+    const items = listFrom(managedList(id));
+    box.hidden = items.length === 0;
+    box.textContent = items.length ? '由管理員設定（不可移除）：' + items.join('、') : '';
+  }
+  if (locked.countdown()) $('countdown').value = managed.countdown;
+  if (locked.holdOnWarning()) $('holdOnWarning').checked = managed.holdOnWarning;
+  if (locked.enabled()) $('enabled').checked = true;
+  for (const id of Object.keys(locked)) {
+    $(id).disabled = locked[id]();
+    $('l-' + id).hidden = !locked[id]();
+  }
+}
+
 function clampCountdown() {
   return Math.min(120, Math.max(1, parseInt($('countdown').value, 10) || 15));
 }
 
 // ---------- 即時預覽 ----------
 function renderDomains() {
-  const list = listFrom($('internalDomains').value).map((d) => d.replace(/^@/, ''));
+  const list = listFrom(eff('internalDomains')).map((d) => d.replace(/^@/, ''));
   $('domainLive').textContent = list.length
     ? `目前視為內部：${list.join('、')}`
     : '目前留白：會自動使用登入 Gmail 帳號的網域。';
@@ -75,11 +104,11 @@ function renderTry() {
   if (!email) { box.textContent = '在上面輸入地址，這裡會顯示判斷結果。'; return; }
   if (!EMAIL_RE.test(email)) { box.textContent = '請輸入完整的信箱地址。'; return; }
 
-  const internal = listFrom($('internalDomains').value).map((d) => d.replace(/^@/, ''));
+  const internal = listFrom(eff('internalDomains')).map((d) => d.replace(/^@/, ''));
   const domain = email.split('@')[1];
   const external = internal.length ? !internal.some((i) => domain === i || domain.endsWith('.' + i)) : null;
-  const group = isGroup(email, $('groupPatterns').value);
-  const alert = isAlert(email, $('alertPatterns').value);
+  const group = isGroup(email, eff('groupPatterns'));
+  const alert = isAlert(email, eff('alertPatterns'));
 
   const add = (cls, text) => {
     const s = document.createElement('span');
@@ -110,23 +139,25 @@ function renderAll() { renderDomains(); renderCountdown(); renderTry(); }
 
 // ---------- 表單讀寫 ----------
 function fillForm(v) {
+  lastUser = { ...v };
   $('enabled').checked = v.enabled;
   $('countdown').value = v.countdown;
   $('internalDomains').value = v.internalDomains;
   $('groupPatterns').value = v.groupPatterns;
   $('alertPatterns').value = v.alertPatterns;
   $('holdOnWarning').checked = v.holdOnWarning;
+  applyManaged();
   renderAll();
 }
 
 function readForm() {
   return {
-    enabled: $('enabled').checked,
-    countdown: clampCountdown(),
+    enabled: locked.enabled() ? lastUser.enabled : $('enabled').checked,
+    countdown: locked.countdown() ? lastUser.countdown : clampCountdown(),
     internalDomains: $('internalDomains').value.trim(),
     groupPatterns: $('groupPatterns').value.trim(),
     alertPatterns: $('alertPatterns').value.trim(),
-    holdOnWarning: $('holdOnWarning').checked
+    holdOnWarning: locked.holdOnWarning() ? lastUser.holdOnWarning : $('holdOnWarning').checked
   };
 }
 
@@ -139,6 +170,14 @@ function showStatus(text, isError) {
 }
 
 // ---------- 載入、儲存 ----------
+// 受管理的設定：不是受管理的瀏覽器時會是空的或回報錯誤，兩種情況都當作沒有
+try {
+  chrome.storage.managed.get(null, (v) => {
+    if (chrome.runtime.lastError || !v) return;
+    managed = v; applyManaged(); renderAll();
+  });
+} catch (_) { /* 沒有受管理的設定 */ }
+
 chrome.storage.sync.get(DEFAULTS, (v) => {
   fillForm(v);
   if (!v.internalDomains.trim()) $('internalDomains').focus();   // 新使用者：游標直接放在第 1 項
@@ -157,7 +196,8 @@ document.querySelectorAll('[data-block]').forEach((b) => {
 $('save').addEventListener('click', () => {
   const v = readForm();
   chrome.storage.sync.set(v, () => {
-    $('countdown').value = v.countdown;
+    lastUser = { ...v };
+    if (!locked.countdown()) $('countdown').value = v.countdown;
     renderAll();
     showStatus('已儲存，請重新整理 Gmail 分頁');
   });

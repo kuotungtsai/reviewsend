@@ -1,0 +1,8 @@
+{
+  "internalDomains": { "Value": "example.com\nexample.com.tw" },
+  "groupPatterns": { "Value": "all@\nstaff@" },
+  "alertPatterns": { "Value": "@competitor.com\nboss@example.org" },
+  "countdown": { "Value": 15 },
+  "holdOnWarning": { "Value": true },
+  "forceEnabled": { "Value": true }
+}

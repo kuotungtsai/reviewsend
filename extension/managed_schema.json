@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "internalDomains": {
+      "title": "公司內部網域",
+      "description": "一行一個網域。會與使用者自己填的合併。",
+      "type": "string"
+    },
+    "groupPatterns": {
+      "title": "群組地址",
+      "description": "一行一個。all@ 比對任何網域的 all 信箱；完整地址只比對該地址。會與使用者自己填的合併。",
+      "type": "string"
+    },
+    "alertPatterns": {
+      "title": "特別警示名單",
+      "description": "一行一個。完整地址、@網域 或 name@。會與使用者自己填的合併。",
+      "type": "string"
+    },
+    "countdown": {
+      "title": "倒數秒數",
+      "description": "1 到 120。設定後使用者不能更改。",
+      "type": "integer"
+    },
+    "holdOnWarning": {
+      "title": "有紅色警示時不自動寄出",
+      "description": "設定後使用者不能更改。",
+      "type": "boolean"
+    },
+    "forceEnabled": {
+      "title": "強制啟用寄出確認",
+      "description": "設為 true 時使用者不能在設定頁關閉寄出確認。",
+      "type": "boolean"
+    }
+  }
+}

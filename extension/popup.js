@@ -17,7 +17,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         '擴充套件只在 Gmail 網頁運作。如果這就是 Gmail，請重新整理這個分頁一次。');
     }
     if (res.enabled) {
-      show('on', '運作中', '在這個分頁按「傳送」或 Ctrl+Enter 時，會先跳出確認視窗。');
+      show('on', res.forced ? '運作中（由管理員啟用）' : '運作中',
+        '在這個分頁按「傳送」或 Ctrl+Enter 時，會先跳出確認視窗。');
     } else {
       show('off', '已停用', '設定裡的「啟用寄出確認」沒有勾選，信會直接寄出。');
     }
