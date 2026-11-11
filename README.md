@@ -160,7 +160,7 @@ send-guard-for-gmail/
 ├── docs/               ← README 用的截圖、IT 政策範例
 └── test/
     ├── mock_gmail.html ← 模擬 Gmail 撰寫視窗
-    └── run_test.py     ← Playwright 自動測試（29 項）
+    └── run_test.py     ← Playwright 自動測試（28 項）
 ```
 
 ## 測試
@@ -173,6 +173,8 @@ python test/run_test.py
 
 測試會用模擬頁面驗證：點傳送跳出視窗、倒數自動寄出、立即寄出、取消、Ctrl+Enter、Esc、群組地址與多網域警示、點清單暫停、下拉選單不被攔截、收件人很多時要先捲到底。完整跑一次約 2.5 分鐘。
 
+如果電腦的安全設定不允許執行 Playwright 下載的 Chromium，可以改用已安裝的瀏覽器：把環境變數 `CHROME_PATH` 設成 Edge 的執行檔路徑再執行。新版的 Google Chrome 不允許用指令載入擴充套件，所以不能用來跑這份測試。
+
 ## 限制
 
 - 只對電腦版 Chrome 的 Gmail 網頁有效，手機 App 不會攔截。
@@ -180,3 +182,7 @@ python test/run_test.py
 - 傳送按鈕用三種特徵辨識（Gmail 的樣式名稱、各語言的按鈕文字、提示裡的 Ctrl-Enter 快速鍵），任一符合即可，所以介面語言不在內建清單裡也能運作。
 - 從「排定傳送」選單寄出的信不會被攔截。
 - 倒數結束送出後，Gmail 本身的「撤銷傳送」仍然有效。
+
+## 授權
+
+本專案採用 [MIT 授權](LICENSE)。軟體依現況提供，不附任何擔保；使用者須自行確認收件人，作者不對寄錯信件造成的損失負責。
