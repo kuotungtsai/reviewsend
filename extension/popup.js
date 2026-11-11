@@ -28,3 +28,24 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     }
   });
 });
+
+// 複製診斷資訊：收件人顯示不正確時，把撰寫視窗的結構（地址已遮蔽，不含主旨與內文）複製到剪貼簿，方便回報。
+document.getElementById('diag').addEventListener('click', () => {
+  const out = document.getElementById('diagMsg');
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs && tabs[0];
+    if (!tab) { out.textContent = '找不到目前的分頁。'; return; }
+    chrome.tabs.sendMessage(tab.id, { type: 'gsg-diagnose' }, async (res) => {
+      if (chrome.runtime.lastError || !res || !res.report) {
+        out.textContent = '這個分頁無法產生診斷資訊。請在 Gmail 分頁、撰寫視窗開著的時候再按一次。';
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(res.report);
+        out.textContent = '已複製到剪貼簿。內容只有頁面結構，信箱地址已遮蔽，不含主旨與內文。';
+      } catch (_) {
+        out.textContent = '無法寫入剪貼簿：' + res.report.slice(0, 200);
+      }
+    });
+  });
+});

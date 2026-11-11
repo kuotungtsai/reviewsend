@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Send Guard for Gmail",
+  "name": "ReviewSend: Recipient Check for Gmail",
+  "short_name": "ReviewSend",
   "version": "1.0.0",
   "description": "按下傳送後先列出所有收件人並倒數，確認後才真正寄出。只在本機執行，不傳送任何資料。",
   "icons": {
@@ -12,7 +13,7 @@
   "permissions": ["storage"],
   "storage": { "managed_schema": "managed_schema.json" },
   "action": {
-    "default_title": "Send Guard for Gmail",
+    "default_title": "ReviewSend",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

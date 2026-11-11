@@ -1,10 +1,10 @@
-# Send Guard for Gmail 使用手冊
+# ReviewSend 使用手冊
 
 這份手冊給實際使用的人看，不需要懂程式。照著做大約 5 分鐘可以完成安裝與設定。
 
 ## 1. 這是什麼
 
-Send Guard for Gmail 是一個 Chrome 擴充套件。裝好之後，你在 Gmail 按下「傳送」時，信不會馬上寄出，而是先跳出一個視窗，把這封信的所有收件人、主旨和附件列給你看，倒數幾秒後才真正寄出。
+ReviewSend（完整名稱 ReviewSend: Recipient Check for Gmail）是一個 Chrome 擴充套件。裝好之後，你在 Gmail 按下「傳送」時，信不會馬上寄出，而是先跳出一個視窗，把這封信的所有收件人、主旨和附件列給你看，倒數幾秒後才真正寄出。
 
 <img src="images/dialog-hero.png" alt="按下傳送後的確認視窗" width="620">
 
@@ -23,7 +23,7 @@ Send Guard for Gmail 是一個 Chrome 擴充套件。裝好之後，你在 Gmail
 
 ## 2. 安裝
 
-你會拿到一個壓縮檔 `send-guard-for-gmail-x.x.x.zip`。
+你會拿到一個壓縮檔 `reviewsend-x.x.x.zip`。
 
 1. 把壓縮檔解壓縮到一個固定的資料夾，例如「文件」底下。**安裝後這個資料夾不能刪除或搬走**，否則擴充套件會失效。
 2. 打開 Chrome，在網址列輸入 `chrome://extensions` 後按 Enter。
@@ -33,8 +33,8 @@ Send Guard for Gmail 是一個 Chrome 擴充套件。裝好之後，你在 Gmail
    <img src="images/install.png" alt="擴充功能頁面的開發人員模式與載入未封裝項目" width="760">
 
 5. 在跳出的視窗中，選剛才解壓縮出來的資料夾，按「選擇資料夾」。
-6. 頁面上出現黃色盾牌圖示的「Send Guard for Gmail」卡片，就是安裝成功。這時會自動開啟設定頁。
-7. 按網址列右邊的拼圖圖示，在「Send Guard for Gmail」旁邊按圖釘，把它固定在工具列上，方便之後查看狀態。
+6. 頁面上出現黃色盾牌圖示的「ReviewSend」卡片，就是安裝成功。這時會自動開啟設定頁。
+7. 按網址列右邊的拼圖圖示，在「ReviewSend」旁邊按圖釘，把它固定在工具列上，方便之後查看狀態。
 
 > 之後每次開啟 Chrome，可能會看到「停用開發人員模式擴充功能」的提醒，按關閉即可，不要按停用。
 
@@ -46,7 +46,7 @@ Send Guard for Gmail 是一個 Chrome 擴充套件。裝好之後，你在 Gmail
 
 ### 最快的方式：使用別人給你的設定檔
 
-如果同事或 IT 給了你一個 `send-guard-for-gmail-config.json`：
+如果同事或 IT 給了你一個 `reviewsend-config.json`：
 
 1. 在設定頁最下面按「上傳設定檔」，選那個檔案。
 2. 確認上方的欄位已經自動填好。
@@ -122,7 +122,7 @@ Send Guard for Gmail 是一個 Chrome 擴充套件。裝好之後，你在 Gmail
 | 警示內容 | 意思 | 建議 |
 |---|---|---|
 | 含群組地址 | 收件人裡有群組信箱，會寄給很多人 | 確認真的要寄給整個群組 |
-| 含特別警示地址 | 收件人在你的特別警示名單裡 | 再確認一次內容和附件 |
+| 含特別警示地址 | 收件人在你的特別警示名單裡 | 再確認一次內容和附件。按「立即寄出」後還會再倒數 5 秒，這段時間可以按「取消，返回編輯」反悔 |
 | 同時寄給多個不同的外部網域 | 這封信同時寄給兩家以上的外部單位 | 確認沒有把甲客戶的信也寄給乙客戶 |
 | 讀不到任何收件人 | 套件看不懂目前的 Gmail 畫面 | 自己到撰寫視窗確認收件人；並通知提供這個套件的人 |
 
@@ -164,10 +164,10 @@ Gmail 本身的「取消傳送」仍然有效。信寄出後，畫面左下角�
 每個設定檔要各自安裝、各自設定一次。
 
 **怎麼更新到新版？**<br>
-把新版壓縮檔解壓縮，覆蓋到原本的資料夾，再到 `chrome://extensions` 按「Send Guard for Gmail」卡片上的重新載入按鈕，最後重新整理 Gmail 分頁。你的設定會保留。
+把新版壓縮檔解壓縮，覆蓋到原本的資料夾，再到 `chrome://extensions` 按「ReviewSend」卡片上的重新載入按鈕，最後重新整理 Gmail 分頁。你的設定會保留。
 
 **怎麼移除？**<br>
-到 `chrome://extensions`，在「Send Guard for Gmail」卡片上按「移除」。
+到 `chrome://extensions`，在「ReviewSend」卡片上按「移除」。
 
 ## 9. 快速參考
 

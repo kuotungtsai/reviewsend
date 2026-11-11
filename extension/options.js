@@ -205,14 +205,15 @@ $('save').addEventListener('click', () => {
 
 // ---------- 下載 / 上傳設定檔 ----------
 // 設定檔是純文字 JSON，只在本機產生與讀取，不會上傳到任何地方。
-const CONFIG_TYPE = 'send-guard-for-gmail-config';
+const CONFIG_TYPE = 'reviewsend-config';
+const LEGACY_TYPES = ['send-guard-for-gmail-config', 'gmail-send-guard-config'];   // 改名前匯出的設定檔仍可上傳
 
 $('exportBtn').addEventListener('click', () => {
   const data = { type: CONFIG_TYPE, version: 1, settings: readForm() };
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'send-guard-for-gmail-config.json';
+  a.download = 'reviewsend-config.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   showStatus('已下載設定檔（內容為畫面上目前的設定）');
@@ -222,7 +223,7 @@ $('exportBtn').addEventListener('click', () => {
 function parseConfig(text) {
   let data;
   try { data = JSON.parse(text); } catch (_) { throw new Error('不是有效的 JSON 檔'); }
-  const s = data && data.type === CONFIG_TYPE ? data.settings : null;
+  const s = data && (data.type === CONFIG_TYPE || LEGACY_TYPES.includes(data.type)) ? data.settings : null;
   if (!s || typeof s !== 'object') throw new Error('不是這個擴充套件的設定檔');
   const out = { ...DEFAULTS };
   for (const k of Object.keys(DEFAULTS)) {

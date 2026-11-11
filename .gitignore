@@ -1,2 +1,3 @@
 dist/
+reviewsend-config*.json
 send-guard-for-gmail-config*.json

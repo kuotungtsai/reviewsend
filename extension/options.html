@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>Send Guard for Gmail - 設定</title>
+<title>ReviewSend - 設定</title>
 <style>
   body { font: 14px/1.6 "Noto Sans TC", "Microsoft JhengHei", Roboto, Arial, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 20px 48px; color: #1f1f1f; }
   h1 { font-size: 22px; }
@@ -51,7 +51,7 @@
 </style>
 </head>
 <body>
-  <h1>Send Guard for Gmail - 設定</h1>
+  <h1>ReviewSend - 設定</h1>
   <p class="intro">按下 Gmail 的「傳送」後，會先跳出視窗列出所有收件人並倒數，確認後才真正寄出。每一項設定右邊都有說明，改了之後可以在最下面的「試試看」馬上看到效果。</p>
 
   <div id="setup" hidden>第一次使用？請先填寫第 1 項「公司內部網域」再按最下面的「儲存」。</div>
@@ -115,7 +115,7 @@
       <textarea id="alertPatterns" placeholder="boss@example.com&#10;@competitor.com"></textarea>
     </div>
     <aside class="help">
-      <b>你想特別小心的收件人。</b>命中時標 <span class="tag alert">特別警示</span> 並出現紅色警示。
+      <b>你想特別小心的收件人。</b>命中時標 <span class="tag alert">特別警示</span> 並出現紅色警示；按「立即寄出」後還會再倒數 5 秒，可以反悔。
       <ul>
         <li><code>boss@example.com</code>：只比對這個地址。</li>
         <li><code>@competitor.com</code>：整個網域（含子網域）。</li>

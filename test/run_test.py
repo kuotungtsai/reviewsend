@@ -123,6 +123,51 @@ async def main():
         await shadow_click(page, '.send'); await page.wait_for_timeout(300)
         check('long list: send-now works without scrolling', await page.evaluate('window.__sent') == 1)
 
+        # 10b. recipient removed while the field is expanded: the hidden summary still holds the old address
+        await load('stale')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('stale summary: removed recipient is not listed', t and '3 位收件人' in t and 'gone@' not in t)
+        check('stale summary: real recipients still listed', t and 'bob@example.com' in t and 'pm@customer-a.com' in t and 'carol.lin@example.com' in t)
+
+        # 10c. collapsed field: chips hidden, summary visible -> no duplicates, Cc stays in Cc
+        await load('collapsed')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('collapsed: counts each recipient once', t and '3 位收件人' in t and '收件者（2）' in t and '副本（1）' in t)
+
+        # 10d. older markup without role=option chips still works
+        await load('legacy')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('legacy markup: recipients still read', t and '3 位收件人' in t and '副本（1）' in t)
+
+        # 11. special-alert recipient -> "send now" waits 5 more seconds and can be cancelled
+        sw = ctx.service_workers[0] if ctx.service_workers else await ctx.wait_for_event('serviceworker')
+        await sw.evaluate("() => chrome.storage.sync.set({ alertPatterns: 'vip@example.org' })")
+        await load('alert')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('alert: warning shown and held', t and '特別警示' in t and '不會自動寄出' in t)
+        await shadow_click(page, '.send'); await page.wait_for_timeout(500)
+        t = await overlay_text(page)
+        check('alert: send-now starts a 5s countdown', await page.evaluate('window.__sent') == 0 and t and '秒後寄出' in t)
+        await page.wait_for_timeout(5500)
+        check('alert: sent after the extra countdown', await page.evaluate('window.__sent') == 1)
+
+        await load('alert')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        await shadow_click(page, '.send'); await page.wait_for_timeout(1500)
+        await shadow_click(page, '.cancel'); await page.wait_for_timeout(6000)
+        check('alert: cancel during the extra countdown -> not sent', await page.evaluate('window.__sent') == 0 and await overlay_text(page) is None)
+
+        # non-alert warnings (group) still send immediately on "send now"
+        await load('group')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        await shadow_click(page, '.send'); await page.wait_for_timeout(300)
+        check('group without alert: send-now is still immediate', await page.evaluate('window.__sent') == 1)
+        await sw.evaluate("() => chrome.storage.sync.set({ alertPatterns: '' })")
+
         await ctx.close()
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')

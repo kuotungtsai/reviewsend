@@ -1,5 +1,5 @@
 /*
- * Send Guard for Gmail
+ * ReviewSend
  * 攔截 Gmail 的「傳送」按鈕與 Ctrl/Cmd+Enter，先顯示所有收件人並倒數，
  * 倒數結束或按「立即寄出」才真正送出。全部在本機執行，不連任何外部伺服器。
  */
@@ -60,6 +60,7 @@
     // 點工具列圖示時，彈出視窗會來問這個分頁的狀態
     chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled, forced: managed.forceEnabled === true, broken });
+      if (msg && msg.type === 'gsg-diagnose') reply({ report: diagnose() });
     });
   } catch (_) { /* 測試環境沒有 chrome.storage 時用預設值 */ }
 
@@ -175,17 +176,35 @@
       });
     }
 
-    // 方法 2：收件人膠囊（新版 data-hovercard-id、舊版 span[email]）
-    const chips = root.querySelectorAll('[data-hovercard-id], span[email], div[email]');
-    for (const chip of chips) {
-      if (chip.closest(EDITABLE_SEL)) continue;                    // 內文、引用內容裡的名字不算
-      const raw = chip.getAttribute('data-hovercard-id') || chip.getAttribute('email') || '';
+    // 方法 2：頁面上帶有信箱地址的元素（新版 data-hovercard-id、舊版 span[email]）。
+    // Gmail 每位收件人有兩份：
+    //   膠囊  = 收件人欄位展開時看到的，role="option"，刪除收件人時會立刻更新，是準確的來源。
+    //   摘要  = 欄位收合時看到的那行文字，只在收合的瞬間重寫；欄位展開時它被藏起來，內容可能是舊的。
+    const els = [...root.querySelectorAll('[data-hovercard-id], span[email], div[email]')]
+      .filter((el) => !el.closest(EDITABLE_SEL));                  // 內文、引用內容裡的名字不算
+    const isChip = (el) => el.getAttribute('role') === 'option';
+    const hasChips = els.some(isChip);
+    const everSeen = new Set();                                     // 已經從膠囊讀到的地址（不分欄位）
+    const take = (el, fromChip) => {
+      const raw = el.getAttribute('data-hovercard-id') || el.getAttribute('email') || '';
       const m = raw.match(EMAIL_RE);
-      if (!m) continue;
-      const field = fieldOf(chip, root);
-      if (field === 'from') continue;
-      const name = chip.getAttribute('data-name') || chip.getAttribute('name') || (chip.textContent || '').replace(m[0], '').trim();
+      if (!m) return;
+      const email = m[0].toLowerCase();
+      // 摘要判斷不出收件者 / 副本的差別，膠囊已經有的地址就不要再從摘要加一次
+      if (!fromChip && everSeen.has(email)) return;
+      const field = fieldOf(el, root);
+      if (field === 'from') return;
+      const name = el.getAttribute('data-name') || el.getAttribute('name') || (el.textContent || '').replace(m[0], '').trim();
       add(field, m[0], name && name !== m[0] ? name : '');
+      if (fromChip) everSeen.add(email);
+    };
+    for (const el of els) if (isChip(el)) take(el, true);
+    for (const el of els) {
+      if (isChip(el)) continue;
+      // 有膠囊可讀、而這個元素目前沒有顯示在畫面上：它是被藏起來的舊摘要，可能含有已刪除的收件人，略過。
+      // 沒有膠囊（舊版介面）或元素看得見時照常採用，寧可多列也不要漏掉。
+      if (hasChips && el.getClientRects().length === 0) continue;
+      take(el, false);
     }
 
     // 已經在明確欄位出現過的地址，從 unknown 移除
@@ -308,6 +327,7 @@
     .msg { flex: 1; color: #444; }
     button { font: inherit; border-radius: 999px; padding: 8px 18px; cursor: pointer; border: 1px solid #747775; background: #fff; color: #0b57d0; }
     button.primary { background: #0b57d0; color: #fff; border-color: #0b57d0; }
+    button:disabled { opacity: .6; cursor: default; }
     button:focus-visible { outline: 3px solid #a8c7fa; outline-offset: 1px; }
   `;
 
@@ -377,8 +397,15 @@
     let timer = null;
     let paused = false;
 
+    // 收件人含特別警示名單時，按「立即寄出」後再多等幾秒，這段時間還可以取消
+    const FINAL_SECONDS = 5;
+    const hasAlert = all.some((r) => r.alert);
+    let finalTimer = null;
+    let finalizing = false;
+
     const close = () => {
       if (timer) clearInterval(timer);
+      if (finalTimer) clearInterval(finalTimer);
       if (overlayHost) overlayHost.remove();
       overlayHost = null;
     };
@@ -387,7 +414,27 @@
     overlayHost._gsgCancel = cancel;
 
     $('.cancel').addEventListener('click', cancel);
-    $('.send').addEventListener('click', send);
+    const confirmSend = () => {
+      if (!hasAlert) { send(); return; }
+      if (finalizing) return;
+      finalizing = true;
+      if (timer) { clearInterval(timer); timer = null; }        // 停掉原本的倒數，改跑最後這幾秒
+      const btn = $('.send');
+      btn.disabled = true;
+      if (bar) bar.style.width = '0%';
+      let left = FINAL_SECONDS;
+      const show = () => {
+        msg.textContent = `含特別警示地址，${left} 秒後寄出。要反悔請按「取消，返回編輯」。`;
+        btn.textContent = `${left} 秒後寄出`;
+      };
+      show();
+      finalTimer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) { send(); return; }
+        show();
+      }, 1000);
+    };
+    $('.send').addEventListener('click', confirmSend);
 
     if (hold) {
       msg.textContent = '有警示，不會自動寄出，請確認後手動按「立即寄出」。';
@@ -397,6 +444,7 @@
       const atBottom = () => bd.scrollTop + bd.clientHeight >= bd.scrollHeight - 4;
       let waiting = !atBottom();
       const tick = () => {
+        if (finalizing) return;                 // 最後倒數中，不要蓋掉訊息
         msg.textContent = waiting ? '收件人較多，請往下捲到最後確認，才會開始倒數。'
           : paused ? '已暫停倒數' : `${remaining} 秒後自動寄出（點清單可暫停）`;
         if (bar) bar.style.width = `${(remaining / total) * 100}%`;
@@ -421,7 +469,7 @@
 
   function reallySend(btn) {
     if (!btn.isConnected) {
-      alert('Send Guard for Gmail：找不到原本的傳送按鈕（撰寫視窗可能已關閉），信件沒有寄出。');
+      alert('ReviewSend：找不到原本的傳送按鈕（撰寫視窗可能已關閉），信件沒有寄出。');
       return;
     }
     bypass = true;
@@ -437,6 +485,60 @@
     } finally {
       setTimeout(() => { bypass = false; }, 300);
     }
+  }
+
+  // ---------- 診斷資訊 ----------
+  // 使用者主動按「複製診斷資訊」時才會執行。只描述撰寫視窗裡「收件人相關元素」的結構，
+  // 不含主旨、內文、附件；信箱地址會遮蔽（只留前兩個字與網域），顯示名稱不輸出。
+  function maskEmail(e) {
+    const m = String(e || '').match(EMAIL_RE);
+    if (!m) return '';
+    const [local, domain] = m[0].toLowerCase().split('@');
+    return local.slice(0, 2) + '***@' + domain;
+  }
+  function describe(el, root) {
+    const visible = el.getClientRects().length > 0;
+    const chain = [];
+    let hiddenBy = '';
+    for (let n = el, i = 0; n && n !== root.parentElement && i < 8; n = n.parentElement, i++) {
+      const cls = (typeof n.className === 'string' ? n.className : '').trim().split(/\s+/).slice(0, 4).join('.');
+      chain.push(n.tagName.toLowerCase() + (cls ? '.' + cls : '') + (n.getAttribute('role') ? '[role=' + n.getAttribute('role') + ']' : ''));
+      if (!hiddenBy) {
+        const cs = getComputedStyle(n);
+        if (cs.display === 'none') hiddenBy = 'display:none@' + i;
+        else if (cs.visibility === 'hidden') hiddenBy = 'visibility:hidden@' + i;
+        else if (n.getAttribute('aria-hidden') === 'true') hiddenBy = 'aria-hidden@' + i;
+        else if (n.hasAttribute('hidden')) hiddenBy = 'hidden-attr@' + i;
+      }
+    }
+    return { visible, hiddenBy, chain: chain.join(' < ') };
+  }
+  function diagnose() {
+    const roots = new Set();
+    for (const b of document.querySelectorAll('[role="button"]')) {
+      if (!isSendButtonEl(b)) continue;
+      const r = composeRootOf(b);
+      if (r) roots.add(r);
+    }
+    const out = { version: 1, url: location.pathname, composeCount: roots.size, composes: [] };
+    for (const root of roots) {
+      const c = { inputs: [], chips: [], result: {} };
+      for (const inp of root.querySelectorAll('input[name="to"], input[name="cc"], input[name="bcc"], textarea[name="to"], textarea[name="cc"], textarea[name="bcc"]')) {
+        c.inputs.push({ tag: inp.tagName.toLowerCase(), name: inp.name, type: inp.type || '',
+          values: parseAddressList(inp.value || '').map((r) => maskEmail(r.email)), ...describe(inp, root) });
+      }
+      for (const chip of root.querySelectorAll('[data-hovercard-id], span[email], div[email]')) {
+        const raw = chip.getAttribute('data-hovercard-id') || chip.getAttribute('email') || '';
+        if (!EMAIL_RE.test(raw)) continue;
+        c.chips.push({ email: maskEmail(raw), attr: chip.hasAttribute('data-hovercard-id') ? 'data-hovercard-id' : 'email',
+          inBody: !!chip.closest(EDITABLE_SEL), field: fieldOf(chip, root),
+          selected: chip.getAttribute('aria-selected') || '', ...describe(chip, root) });
+      }
+      const rec = readRecipients(root);
+      for (const k of Object.keys(rec)) c.result[k] = rec[k].map((r) => maskEmail(r.email));
+      out.composes.push(c);
+    }
+    return JSON.stringify(out, null, 1);
   }
 
   // ---------- 自我檢查 ----------
