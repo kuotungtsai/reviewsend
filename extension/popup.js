@@ -16,6 +16,10 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       return show('', '這個分頁沒有作用',
         '擴充套件只在 Gmail 網頁運作。如果這就是 Gmail，請重新整理這個分頁一次。');
     }
+    if (res.broken && res.enabled) {
+      return show('off', '可能失效',
+        '這個分頁有撰寫視窗，但認不出 Gmail 的傳送按鈕，可能是 Gmail 改版。寄信前請自行確認收件人，並回報給維護者。');
+    }
     if (res.enabled) {
       show('on', res.forced ? '運作中（由管理員啟用）' : '運作中',
         '在這個分頁按「傳送」或 Ctrl+Enter 時，會先跳出確認視窗。');

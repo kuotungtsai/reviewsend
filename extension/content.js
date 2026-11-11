@@ -34,9 +34,10 @@
     cfg = out;
   }
 
+  let broken = false;              // 自我檢查：有撰寫視窗卻認不出傳送按鈕（Gmail 可能改版）
   // 告訴背景程式目前是否啟用，讓工具列圖示在這個 Gmail 分頁顯示綠點 / 灰點
   function reportStatus() {
-    try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled }, () => void chrome.runtime.lastError); }
+    try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled, broken }, () => void chrome.runtime.lastError); }
     catch (_) { /* 擴充套件剛被重新載入時舊分頁會失敗，忽略 */ }
   }
   try {
@@ -58,7 +59,7 @@
     });
     // 點工具列圖示時，彈出視窗會來問這個分頁的狀態
     chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-      if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled, forced: managed.forceEnabled === true });
+      if (msg && msg.type === 'gsg-ping') reply({ enabled: !!cfg.enabled, forced: managed.forceEnabled === true, broken });
     });
   } catch (_) { /* 測試環境沒有 chrome.storage 時用預設值 */ }
 
@@ -72,13 +73,16 @@
     ['from', /^\s*(?:寄件者|发件人|寄件人|From\b|差出人)/i]
   ];
   const EMAIL_RE = /[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/;
+  // 傳送按鈕的提示一定帶有快速鍵，例如「(Ctrl-Enter)」或「(⌘Enter)」，不受介面語言影響
+  const SEND_SHORTCUT_RE = /(?:Ctrl|Control|⌘|Cmd|Command)s*[-+]?s*Enter/i;
   const EDITABLE_SEL = '[g_editable="true"], div[contenteditable="true"][role="textbox"]';
 
   function isSendButtonEl(btn) {
     if (!btn || btn.getAttribute('role') !== 'button') return false;
     if (btn.hasAttribute('aria-haspopup')) return false;          // 排除「更多傳送選項」下拉
     const label = (btn.getAttribute('data-tooltip') || btn.getAttribute('aria-label') || '').trim();
-    return btn.classList.contains('aoO') || SEND_LABEL_RE.test(label);
+    // 三種特徵任一符合就算：Gmail 的 class、各語言的按鈕文字、提示裡的快速鍵（與語言無關）
+    return btn.classList.contains('aoO') || SEND_LABEL_RE.test(label) || SEND_SHORTCUT_RE.test(label);
   }
 
   // 撰寫視窗的範圍。真實 Gmail 裡「內文 + 傳送按鈕」在同一個 table，
@@ -434,6 +438,25 @@
       setTimeout(() => { bypass = false; }, 300);
     }
   }
+
+  // ---------- 自我檢查 ----------
+  // 每隔幾秒看一次：頁面上有撰寫視窗（有主旨欄和內文），卻找不到任何認得的傳送按鈕，
+  // 代表 Gmail 改版導致攔截失效。連續兩次都這樣才回報，避免撰寫視窗剛打開、按鈕還沒畫出來時誤報。
+  let missCount = 0;
+  function healthCheck() {
+    let miss = false;
+    for (const subj of document.querySelectorAll(HEADER_SEL)) {
+      let n = subj.parentElement, root = null;
+      for (let i = 0; n && i < 30; i++, n = n.parentElement) {
+        if (n.querySelector(EDITABLE_SEL)) { root = n; break; }
+      }
+      if (root && countSendButtons(root) === 0) miss = true;
+    }
+    missCount = miss ? missCount + 1 : 0;
+    const now = missCount >= 2;
+    if (now !== broken) { broken = now; reportStatus(); }
+  }
+  setInterval(healthCheck, 3000);
 
   // ---------- 攔截事件（window capture，比 Gmail 自己的 handler 更早） ----------
   const insideOverlay = (e) => overlayHost && e.composedPath().includes(overlayHost);

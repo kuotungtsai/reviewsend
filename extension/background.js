@@ -4,7 +4,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // Gmail 分頁裡的 content script 回報狀態後，在該分頁的工具列圖示右下角畫一個小圓點：
-// 綠色 = 運作中，灰色 = 已停用。其他分頁維持原本的圖示，代表擴充套件在那裡不作用。
+// 綠色 = 運作中，灰色 = 已停用，紅色 = 可能失效（認不出傳送按鈕）。其他分頁維持原本的圖示，代表擴充套件在那裡不作用。
 // （Chrome 內建的文字標記大小不能調整，會蓋住半個圖示，所以自己畫。）
 const SIZES = [16, 32];
 const bitmaps = {};
@@ -40,9 +40,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   chrome.action.setBadgeText({ tabId, text: '' });
   chrome.action.setTitle({
     tabId,
-    title: msg.enabled ? 'Send Guard for Gmail：運作中' : 'Send Guard for Gmail：已停用'
+    title: msg.broken ? 'Send Guard for Gmail：可能失效，認不出 Gmail 的傳送按鈕'
+      : msg.enabled ? 'Send Guard for Gmail：運作中' : 'Send Guard for Gmail：已停用'
   });
-  iconWithDot(msg.enabled ? '#188038' : '#80868b')
+  iconWithDot(msg.broken ? '#d93025' : msg.enabled ? '#188038' : '#80868b')
     .then((imageData) => chrome.action.setIcon({ tabId, imageData }))
     .catch(() => { /* 畫不出來就維持原本的圖示 */ });
 });
