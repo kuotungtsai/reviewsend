@@ -1,172 +1,180 @@
 # ReviewSend: Recipient Check for Gmail
 
-按下 Gmail 的「傳送」或 Ctrl+Enter 後，先跳出視窗列出所有收件人（收件者 / 副本 / 密件副本）、主旨與附件，倒數 15 秒後自動寄出；也可以按「立即寄出」或「取消，返回編輯」。
+**English** | [繁體中文](README.zh-TW.md)
 
-<img src="docs/images/dialog-hero.png" alt="按下傳送後的確認視窗" width="800" style="width:800px;max-width:100%;height:auto">
+After you click Send in Gmail (or press Ctrl+Enter), a dialog first lists every recipient (To / Cc / Bcc), the subject and the attachments. The email is sent automatically after a 15-second countdown, or you can click "Send now" or "Cancel, keep editing".
 
-- 全部在本機執行，不連任何外部伺服器，也不讀取內文。
-- 外部收件人會標「外部」；群組地址（all@ 等）會標「群組」；自訂名單裡的地址會標「特別警示」。
-- 紅色警示（群組地址、特別警示名單、同時寄給多個外部網域、讀不到收件人）出現時不自動寄出，必須手動按「立即寄出」。可在設定關閉。
-- 收件人含特別警示名單時，按「立即寄出」後還會再倒數 5 秒，這段時間仍可取消。
-- 點清單任意處可暫停倒數；按 Esc 等於取消。
-- 收件人多到視窗一頁顯示不完時，要先把清單捲到最底才開始倒數；仍可直接按「立即寄出」。
+<img src="docs/images/en/dialog-hero.png" alt="The confirmation dialog shown after clicking Send" width="800" style="width:800px;max-width:100%;height:auto">
 
-> 本文的截圖都是用 `test/mock_gmail.html` 的範例資料產生的，地址與主旨皆為虛構。
+- Everything runs locally. It connects to no server and does not read the message body.
+- External recipients are tagged "External", group addresses (all@ and the like) are tagged "Group", and addresses on your own list are tagged "Alert".
+- When there is a red warning (a group address, an alert-list address, more than one external domain, or no readable recipients) the email is not sent automatically; you have to click "Send now" yourself. This can be turned off in the settings.
+- If a recipient is on the alert list, "Send now" starts a further 5-second countdown during which you can still cancel.
+- Click anywhere in the list to pause the countdown; Esc cancels.
+- If the recipient list does not fit on one screen, the countdown starts only after you scroll to the end. "Send now" still works straight away.
+- The interface is available in English and Traditional Chinese. It follows the browser language by default and can be switched in the settings.
 
-## 安裝
+> The screenshots here are generated from the sample data in `test/mock_gmail.html`. All addresses and subjects are fictional.
 
-擴充套件尚未上架 Chrome 線上應用程式商店，需要用「載入未封裝項目」的方式安裝。
+## Install
 
-1. 下載這個專案並解壓縮，記住 `extension` 資料夾的位置。
-2. 在 Chrome 網址列輸入 `chrome://extensions` 並按 Enter。
-3. 打開頁面右上角的「開發人員模式」開關（下圖 1）。
-4. 左上角會多出一排按鈕，按「載入未封裝項目」（下圖 2）。
+The extension is not on the Chrome Web Store yet, so it is installed with "Load unpacked".
 
-   <img src="docs/images/install.png" alt="chrome://extensions 的開發人員模式與載入未封裝項目" width="760">
+1. Download this project and extract it. Note where the `extension` folder is.
+2. Type `chrome://extensions` in Chrome's address bar and press Enter.
+3. Turn on "Developer mode" at the top right (1 in the picture).
+4. A row of buttons appears at the top left. Click "Load unpacked" (2 in the picture).
 
-5. 在選擇資料夾的視窗裡，選專案中的 `extension` 資料夾（不是專案最外層）。
-6. 清單裡出現黃色盾牌圖示的「ReviewSend」卡片就代表安裝成功，同時會自動開啟設定頁。
-7. 依照「設定」一節完成設定後，**重新整理已經開著的 Gmail 分頁**。
-8. 建議把圖示釘選到工具列：按網址列右邊的拼圖圖示，在「ReviewSend」旁邊按圖釘。
+   <img src="docs/images/en/install.png" alt="Developer mode and Load unpacked on chrome://extensions" width="760">
 
-### 怎麼確認有在運作
+5. In the folder picker, choose the `extension` folder inside the project (not the project's top folder).
+6. A "ReviewSend" card with a yellow shield icon appears in the list. That means it is installed, and the settings page opens automatically.
+7. Finish the steps under "Settings", then **reload any Gmail tabs that are already open**.
+8. Pinning the icon is recommended: click the puzzle icon to the right of the address bar, then the pin next to "ReviewSend".
 
-看工具列上的黃色盾牌圖示右下角有沒有小圓點：
+### How to tell it is working
 
-<img src="docs/images/icon-states.png" alt="工具列圖示的四種狀態" width="620">
+Look for a small dot at the bottom right of the yellow shield icon in the toolbar:
 
-| 圖示狀態 | 代表 |
+<img src="docs/images/en/icon-states.png" alt="The four states of the toolbar icon" width="620">
+
+| Icon | Meaning |
 |---|---|
-| 右下角有綠色圓點 | 這個 Gmail 分頁正在受保護，按傳送會先跳出確認視窗 |
-| 右下角有灰色圓點 | 設定裡的「啟用寄出確認」被關掉了，信會直接寄出 |
-| 右下角有紅色圓點 | 可能失效：頁面上有撰寫視窗，但認不出 Gmail 的傳送按鈕，通常代表 Gmail 改版。寄信前請自行確認收件人 |
-| 沒有圓點 | 這個分頁不是 Gmail；如果是 Gmail，代表安裝或更新後還沒重新整理這個分頁 |
+| Green dot | This Gmail tab is protected: clicking Send shows the confirmation dialog first |
+| Grey dot | "Enable send confirmation" is turned off in the settings, so emails are sent immediately |
+| Red dot | May not be working: there is a compose window but Gmail's Send button was not recognised, which usually means Gmail changed. Check your recipients yourself before sending |
+| No dot | This tab is not Gmail. If it is Gmail, the tab has not been reloaded since installing or updating |
 
-圖示如果是整個灰色的、名稱也不是「ReviewSend」，代表這個 Chrome 設定檔載入的還是舊版，請到 `chrome://extensions` 按重新載入。每個 Chrome 設定檔要各自安裝與重新載入。
+Click the icon for a description in words, and to open the settings:
 
-點一下圖示會顯示文字說明，也可以從這裡開啟設定：
+<img src="docs/images/en/popup.png" alt="The toolbar popup showing Active" width="300">
 
-<img src="docs/images/popup.png" alt="點工具列圖示顯示運作中" width="300">
+The most direct check is to send an email to yourself: if the dialog appears after you click Send, it is working.
 
-最直接的確認方式是寄一封信給自己：按「傳送」後有跳出確認視窗，就是正常運作。
+To update later: copy the new files over the same folder, click the reload button on the extension's card at `chrome://extensions`, then reload Gmail.
 
-之後要更新版本：把新的檔案覆蓋到同一個資料夾，到 `chrome://extensions` 按擴充套件卡片上的重新載入按鈕，再重新整理 Gmail。
+## Settings
 
-## 設定
+The settings page opens automatically on first install. To open it again: click the shield icon, then "Open settings".
 
-第一次安裝會自動開啟設定頁。之後要再打開：`chrome://extensions` → ReviewSend →「詳細資料」→「擴充功能選項」。
+<img src="docs/images/en/settings.png" alt="The settings page" width="760">
 
-<img src="docs/images/settings.png" alt="設定頁" width="760">
+"語言 / Language" at the top right switches the interface language (Auto, 繁體中文, English). It takes effect immediately, including in the confirmation dialog.
 
-每一項設定左邊是要填的欄位，右邊是說明。照編號由上往下填即可：
+Each setting has its field on the left and an explanation on the right. Work through them from top to bottom:
 
-1. **公司內部網域**（預設留白）<br>
-   公司信箱 `@` 後面的網域，一行一個。不在清單裡的收件人會標「外部」。
-   留白會自動使用登入 Gmail 帳號的網域。
-2. **倒數秒數**（預設 15）<br>
-   確認視窗出現後等幾秒自動寄出，可設 1 到 120。
-   可按「播放倒數示範」看效果。
-3. **群組地址**（預設 all@、everyone@、all-staff@、allstaff@、staff@、company@）<br>
-   一次會寄給很多人的地址。
-   - `all@`：任何網域的 all 信箱
-   - `team@example.com`：只比對這個地址
-4. **特別警示名單**（預設留白）<br>
-   想特別小心的收件人。
-   - `boss@example.com`：只比對這個地址
-   - `@example.com` 或 `example.com`：整個網域，含子網域
-   - `ceo@`：任何網域的 ceo 信箱
-5. **開關**（預設兩項都開）<br>
-   - 有紅色警示時不自動寄出
-   - 啟用寄出確認
+1. **Internal domains** (empty by default)<br>
+   The part after `@` in your company addresses, one per line. Recipients on any other domain are tagged "External".
+   If left empty, the domain of the signed-in Gmail account is used.
+2. **Countdown** (15 by default)<br>
+   How many seconds the dialog waits before sending, from 1 to 120.
+   "Play countdown demo" shows what it looks like.
+3. **Group addresses** (all@, everyone@, all-staff@, allstaff@, staff@ and company@ by default)<br>
+   Addresses that reach many people at once.
+   - `all@`: the "all" mailbox on any domain
+   - `team@example.com`: this exact address only
+4. **Alert list** (empty by default)<br>
+   Recipients you want to be extra careful with.
+   - `boss@example.com`: this exact address only
+   - `@example.com` or `example.com`: the whole domain, including subdomains
+   - `ceo@`: the "ceo" mailbox on any domain
+5. **Switches** (both on by default)<br>
+   - Do not send automatically when there is a red warning
+   - Enable send confirmation
 
-填完後：
+When you are done:
 
-1. 在最下面的「試試看」輸入任何一個地址，確認它被標成「內部」、「外部」、「群組」或「特別警示」的結果符合預期。這一步不會寄信，也不需要先儲存。
-2. 按「儲存」。
-3. 重新整理 Gmail 分頁。
+1. Type any address into "Try it" at the bottom and check that it is tagged Internal, External, Group or Alert as you expect. This sends nothing and does not need saving first.
+2. Click "Save".
+3. Reload your Gmail tabs.
 
-### 把設定分給其他人
+### Sharing settings with other people
 
-設定頁最下方有「下載設定檔」與「上傳設定檔」：
+At the bottom of the settings page are "Download settings" and "Upload settings":
 
-- 「下載設定檔」會把畫面上目前的設定存成 `reviewsend-config.json`。
-- 其他人安裝後按「上傳設定檔」選這個檔案，欄位會自動填好，確認後按「儲存」才會生效。
-- 設定檔裡包含公司網域與名單，請不要放進公開的地方。
+- "Download settings" saves what is currently on the page as `reviewsend-config.json`.
+- Someone else can install the extension, click "Upload settings" and pick that file. The fields are filled in, and nothing takes effect until they click "Save".
+- The file contains your company domains and lists, so do not put it anywhere public. The language choice is not included.
 
-## 給 IT 管理員：統一下發設定（選用）
+## For IT administrators: managed settings (optional)
 
-這一節是選用的。沒有做任何設定時，擴充套件的行為和個人安裝完全相同，每個人用自己的設定。
+This section is optional. With nothing configured, the extension behaves exactly like a personal install and everyone uses their own settings.
 
-擴充套件支援 Chrome 的受管理設定（managed storage）。管理員下發後：
+The extension supports Chrome's managed storage. Once an administrator pushes settings:
 
-- **公司內部網域、群組地址、特別警示名單**：與使用者自己填的合併。使用者可以再加，但不能移除管理員的項目。
-- **倒數秒數、有紅色警示時不自動寄出**：以管理員的值為準，設定頁上該欄位會鎖定。
-- **強制啟用**：`forceEnabled` 設為 `true` 時，使用者不能關閉寄出確認。
-- 沒有下發的項目，仍由使用者自己決定。
+- **Internal domains, group addresses, alert list**: merged with the user's own. Users can add more but cannot remove the administrator's entries.
+- **Countdown, "do not send automatically when there is a red warning"**: the administrator's value wins and the field is locked on the settings page.
+- **Force enabled**: with `forceEnabled` set to `true`, users cannot turn send confirmation off.
+- Anything not pushed is still up to the user.
 
-設定頁上，由管理員下發的項目會以藍色標示「由管理員設定」。
+On the settings page, managed entries are shown in blue as "Set by your administrator".
 
-做法概要：
+Outline:
 
-1. 擴充套件需要先有固定的 ID，也就是先發佈到 Chrome 線上應用程式商店（可選不公開或僅限本機構），或由公司自行架設更新來源。
-2. 在 Google Workspace 管理後台的 Chrome 應用程式與擴充功能設定中，用 ID 加入這個擴充套件，並設為強制安裝。
-3. 在該擴充套件的政策欄位貼上 JSON。範例見 [docs/policy-example.json](docs/policy-example.json)，可用的項目定義在 `extension/managed_schema.json`。
-4. 在使用者的 Chrome 開 `chrome://policy`，可以確認擴充套件收到的值。
+1. The extension needs a fixed ID first, which means publishing it to the Chrome Web Store (unlisted or restricted to your organisation is fine) or hosting your own update source.
+2. In the Google Workspace admin console, under Chrome apps and extensions, add the extension by its ID and set it to force-install.
+3. Paste JSON into the extension's policy field. See [docs/policy-example.json](docs/policy-example.json) for an example; the available keys are defined in `extension/managed_schema.json`.
+4. On a user's Chrome, `chrome://policy` shows the values the extension received.
 
-管理後台的選單位置與格式可能隨 Google 更新而改變，請以當下的管理員說明文件為準。這項功能目前只用模擬的受管理設定測試過，尚未在實際的 Workspace 環境驗證。
+Menu locations and formats in the admin console may change as Google updates it, so follow the current admin documentation. This feature has only been tested with simulated managed settings, not in a real Workspace environment.
 
-## 寄信時會看到什麼
+## What you see when sending
 
-照平常的方式寫信，按「傳送」或 Ctrl+Enter。信不會馬上寄出，會先出現確認視窗。
+Write your email as usual and click Send or press Ctrl+Enter. The email is not sent straight away; the confirmation dialog appears first.
 
-### 一般情況：倒數後自動寄出
+### Normal case: sent automatically after the countdown
 
-<img src="docs/images/dialog-normal.png" alt="一般情況" width="600">
+<img src="docs/images/en/dialog-normal.png" alt="Normal case" width="600">
 
-- 上方顯示收件人總數與主旨，接著依「收件者 / 副本 / 密件副本」分組列出每一個地址。
-- 外部收件人後面有紅色的「外部」標籤，黃色區塊會列出外部網域。
-- 下方的藍色進度條與文字顯示剩餘秒數，倒數結束就寄出。
-- 「立即寄出」：不等倒數。「取消，返回編輯」或 Esc：不寄出，回到撰寫視窗。
-- 點一下收件人清單可以暫停倒數，慢慢檢查。
+- The top shows the number of recipients and the subject, followed by every address grouped under To / Cc / Bcc.
+- External recipients have a red "External" tag, and the yellow box lists the external domains.
+- The blue bar and the text at the bottom show the seconds left. The email is sent when the countdown ends.
+- "Send now" skips the countdown. "Cancel, keep editing" or Esc sends nothing and returns to the compose window.
+- Click the recipient list to pause the countdown and take your time.
 
-### 有紅色警示：不會自動寄出
+### Red warning: not sent automatically
 
-<img src="docs/images/dialog-warning.png" alt="紅色警示" width="600">
+<img src="docs/images/en/dialog-warning.png" alt="Red warning" width="600">
 
-出現下列任一情況時，視窗上方會有紅色警示，沒有倒數，必須確認後手動按「立即寄出」：
+In any of these cases there is a red warning at the top, no countdown, and you have to click "Send now" yourself after checking:
 
-- 收件人包含群組地址。
-- 收件人包含特別警示名單裡的地址。
-- 同時寄給兩個以上不同的外部網域。
-- 讀不到任何收件人（通常代表 Gmail 介面改版）。
+- A recipient is a group address.
+- A recipient is on the alert list.
+- The email goes to two or more different external domains.
+- No recipients could be read (usually because Gmail's layout changed).
 
-如果收件人包含特別警示名單裡的地址，按「立即寄出」後不會馬上寄出，而是再倒數 5 秒，按鈕會顯示剩餘秒數。這 5 秒內按「取消，返回編輯」或 Esc 可以反悔。其他紅色警示（例如群組地址）按「立即寄出」會直接寄出。
+If a recipient is on the alert list, "Send now" does not send immediately: it counts down another 5 seconds, with the seconds shown on the button. "Cancel, keep editing" or Esc during those 5 seconds stops it. For the other red warnings (such as a group address) "Send now" sends immediately.
 
-### 收件人很多：先捲到最底
+### Many recipients: scroll to the end first
 
-<img src="docs/images/dialog-long.png" alt="收件人很多" width="600">
+<img src="docs/images/en/dialog-long.png" alt="Many recipients" width="600">
 
-清單超過視窗高度時，倒數不會開始，下方提示要先往下捲到最後。捲到底之後才開始倒數；不想等也可以直接按「立即寄出」。
+When the list is taller than the dialog, the countdown does not start and the text at the bottom asks you to scroll to the end. The countdown starts once you reach the bottom. If you would rather not wait, "Send now" works at any time.
 
-## 目錄結構
+## Project layout
 
 ```
 reviewsend/
-├── extension/          ← Chrome 擴充套件本體（載入這個資料夾）
+├── extension/          ← the Chrome extension itself (load this folder)
 │   ├── manifest.json
-│   ├── managed_schema.json  ← IT 可下發的設定項目定義
-│   ├── background.js   ← 第一次安裝時打開設定頁、在工具列圖示上畫運作狀態的圓點
-│   ├── content.js      ← 攔截傳送、讀收件人、顯示確認視窗
+│   ├── managed_schema.json  ← the settings an administrator can push
+│   ├── background.js   ← opens the settings on first install, draws the status dot on the toolbar icon
+│   ├── content.js      ← intercepts Send, reads recipients, shows the dialog
+│   ├── i18n.js         ← interface text (English / Traditional Chinese)
+│   ├── _locales/       ← the extension description per language
 │   ├── icons/
-│   ├── options.html / options.js   ← 設定頁
-│   └── popup.html / popup.js       ← 點工具列圖示顯示運作狀態
-├── docs/               ← README 用的截圖、IT 政策範例
-└── test/
-    ├── mock_gmail.html ← 模擬 Gmail 撰寫視窗
-    └── run_test.py     ← Playwright 自動測試（37 項）
+│   ├── options.html / options.js   ← settings page
+│   └── popup.html / popup.js       ← status popup for the toolbar icon
+├── docs/               ← user guide, screenshots (Chinese ones in images/, English in images/en/), policy example
+├── scripts/
+│   └── package.py      ← checks and builds the installable zip
+├── test/
+│   ├── mock_gmail.html ← a mock Gmail compose window
+│   └── run_test.py     ← Playwright tests (47 checks)
+└── .github/workflows/release.yml  ← tests, packages and publishes when a version tag is pushed
 ```
 
-## 測試
+## Tests
 
 ```
 pip install playwright
@@ -174,18 +182,52 @@ playwright install chromium
 python test/run_test.py
 ```
 
-測試會用模擬頁面驗證：點傳送跳出視窗、倒數自動寄出、立即寄出、取消、Ctrl+Enter、Esc、群組地址與多網域警示、點清單暫停、下拉選單不被攔截、收件人很多時要先捲到底。完整跑一次約 2.5 分鐘。
+The tests use the mock page to check: the dialog opens on Send, automatic send after the countdown, send now, cancel, Ctrl+Enter, Esc, group and multi-domain warnings, pausing by clicking the list, the "more send options" menu not being intercepted, scrolling to the end for long lists, the English interface, and switching languages. A full run takes about 2.5 minutes.
 
-如果電腦的安全設定不允許執行 Playwright 下載的 Chromium，可以改用已安裝的瀏覽器：把環境變數 `CHROME_PATH` 設成 Edge 的執行檔路徑再執行。新版的 Google Chrome 不允許用指令載入擴充套件，所以不能用來跑這份測試。
+If your computer's security settings do not allow Playwright's downloaded Chromium to run, use an installed browser instead: set the `CHROME_PATH` environment variable to the Edge executable before running. Recent versions of Google Chrome do not allow loading an extension from the command line, so Chrome cannot be used for these tests.
 
-## 限制
+## Packaging and releasing
 
-- 只對電腦版 Chrome 的 Gmail 網頁有效，手機 App 不會攔截。
-- 靠 Gmail 頁面結構辨識傳送按鈕與收件人，Gmail 改版可能失效。有兩層保護：讀不到收件人時會顯示紅色警示且不自動寄出；認不出傳送按鈕時，工具列圖示會變成紅色圓點提醒。
-- 傳送按鈕用三種特徵辨識（Gmail 的樣式名稱、各語言的按鈕文字、提示裡的 Ctrl-Enter 快速鍵），任一符合即可，所以介面語言不在內建清單裡也能運作。
-- 從「排定傳送」選單寄出的信不會被攔截。
-- 倒數結束送出後，Gmail 本身的「撤銷傳送」仍然有效。
+### Build on your own computer
 
-## 授權
+```
+python scripts/package.py
+```
 
-本專案採用 [MIT 授權](LICENSE)。軟體依現況提供，不附任何擔保；使用者須自行確認收件人，作者不對寄錯信件造成的損失負責。
+This writes `reviewsend-<version>.zip` to `dist/`, with the version taken from `extension/manifest.json`. The zip can be handed to someone to install, and is also what you upload to the Chrome Web Store. Only Python is needed, with no extra packages. The same source always produces an identical file.
+
+Checks run first, and nothing is written if any of them fails:
+
+- The version is well formed, every file named in `manifest.json` exists, and there is a 128×128 icon.
+- The name, short name and description (in every language) are within the store's length limits.
+- The only permission is `storage` and the extension only runs on `mail.google.com`. Adding a permission later means editing the allow-list in `scripts/package.py` as well, so it cannot slip in by accident.
+- The code contains no network calls or dynamic code execution, and the pages load no remote resources. This is the automatic guard behind "all checks run on your computer".
+- There are no unexpected file types in `extension/`.
+
+To check without writing a file: `python scripts/package.py --check`
+
+### Releasing a new version
+
+1. Change `version` in `extension/manifest.json` (the store requires each upload to have a higher version than the last), then commit and push.
+2. Create a tag with the same version and push it:
+
+   ```
+   git tag -a v1.1.0 -m "ReviewSend 1.1.0"
+   git push origin v1.1.0
+   ```
+
+3. GitHub runs the tests, builds the zip, and creates the release on the Releases page with the zip attached. If the tag and the version in `manifest.json` differ, or the tests fail, nothing is published.
+
+You can also run the "Release" workflow by hand from the Actions page on GitHub. It does the same checks and builds the zip, which is kept as an artifact of that run without publishing anything.
+
+## Limitations
+
+- It only works on Gmail in desktop Chrome. The mobile apps are not intercepted.
+- It recognises the Send button and the recipients from Gmail's page structure, so a Gmail redesign may break it. There are two safeguards: if no recipients can be read, a red warning is shown and nothing is sent automatically; if the Send button is not recognised, the toolbar icon shows a red dot.
+- The Send button is recognised by any of three features (Gmail's class name, the button label in several languages, and the Ctrl-Enter shortcut in its tooltip), so it works even when Gmail's interface language is not in the built-in list.
+- Emails sent from the "Schedule send" menu are not intercepted.
+- After the countdown ends and the email is sent, Gmail's own "Undo send" still works.
+
+## License
+
+This project is released under the [MIT License](LICENSE). The software is provided as is, without warranty of any kind. You are responsible for checking your recipients, and the author is not liable for losses caused by misdirected emails.

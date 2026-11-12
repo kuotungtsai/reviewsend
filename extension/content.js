@@ -13,13 +13,15 @@
     internalDomains: '',           // 逗號或換行分隔；空白 = 自動用登入帳號的網域
     groupPatterns: 'all@\neveryone@\nall-staff@\nallstaff@\nstaff@\ncompany@',
     alertPatterns: '',             // 特別警示名單：完整地址、@網域 或 網域、name@
-    holdOnWarning: true            // 有紅色警示（群組 / 特別警示 / 多個外部網域 / 讀不到收件人）時不自動寄出
+    holdOnWarning: true,           // 有紅色警示（群組 / 特別警示 / 多個外部網域 / 讀不到收件人）時不自動寄出
+    language: 'auto'               // 介面語言：auto（跟隨瀏覽器）、zh-TW、en
   };
   // user = 使用者自己存的設定；managed = IT 管理員下發的設定（沒有就是空的）。
   // cfg 是兩者合併後實際採用的值。沒有 IT 設定時 cfg 就等於 user，行為和單機使用完全相同。
   let user = { ...DEFAULTS };
   let managed = {};
   let cfg = { ...DEFAULTS };
+  let t = ReviewSendI18n.make('auto');   // 介面文字，語言設定載入後會換掉
 
   function mergeConfig() {
     const out = { ...user };
@@ -32,12 +34,14 @@
     if (typeof managed.holdOnWarning === 'boolean') out.holdOnWarning = managed.holdOnWarning;
     if (managed.forceEnabled === true) out.enabled = true;
     cfg = out;
+    t = ReviewSendI18n.make(out.language);
   }
 
   let broken = false;              // 自我檢查：有撰寫視窗卻認不出傳送按鈕（Gmail 可能改版）
   // 告訴背景程式目前是否啟用，讓工具列圖示在這個 Gmail 分頁顯示綠點 / 灰點
   function reportStatus() {
-    try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled, broken }, () => void chrome.runtime.lastError); }
+    try { chrome.runtime.sendMessage({ type: 'gsg-status', enabled: !!cfg.enabled, broken,
+        title: t(broken ? 'titleBroken' : cfg.enabled ? 'titleOn' : 'titleOff') }, () => void chrome.runtime.lastError); }
     catch (_) { /* 擴充套件剛被重新載入時舊分頁會失敗，忽略 */ }
   }
   try {
@@ -75,7 +79,7 @@
   ];
   const EMAIL_RE = /[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/;
   // 傳送按鈕的提示一定帶有快速鍵，例如「(Ctrl-Enter)」或「(⌘Enter)」，不受介面語言影響
-  const SEND_SHORTCUT_RE = /(?:Ctrl|Control|⌘|Cmd|Command)s*[-+]?s*Enter/i;
+  const SEND_SHORTCUT_RE = /(?:Ctrl|Control|⌘|Cmd|Command)\s*[-+]?\s*Enter/i;
   const EDITABLE_SEL = '[g_editable="true"], div[contenteditable="true"][role="textbox"]';
 
   function isSendButtonEl(btn) {
@@ -276,18 +280,18 @@
     }
     // level: 'high' = 暫停自動寄出；'info' = 只提示
     const warnings = [];
-    if (!all.length) warnings.push({ level: 'high', text: '讀不到任何收件人，可能是 Gmail 介面改版。請自行確認收件人後再寄出。' });
+    if (!all.length) warnings.push({ level: 'high', text: t('warnNoRecipients') });
     const ext = all.filter((r) => r.external);
     if (ext.length) {
       const domains = [...new Set(ext.map((r) => r.email.split('@')[1]))];
-      warnings.push({ level: 'info', text: `含 ${ext.length} 位外部收件人（${domains.join('、')}）` });
-      if (domains.length > 1) warnings.push({ level: 'high', text: `同時寄給 ${domains.length} 個不同的外部網域，請確認沒有混到其他客戶` });
+      warnings.push({ level: 'info', text: t.n('infoExternal', ext.length, domains.join(t('sep'))) });
+      if (domains.length > 1) warnings.push({ level: 'high', text: t('warnMultiDomain', domains.length) });
     }
     const groups = all.filter((r) => r.group);
-    if (groups.length) warnings.push({ level: 'high', text: `含群組地址：${groups.map((r) => r.email).join('、')}` });
+    if (groups.length) warnings.push({ level: 'high', text: t('warnGroup', groups.map((r) => r.email).join(t('sep'))) });
     const alerts = all.filter((r) => r.alert);
-    if (alerts.length) warnings.push({ level: 'high', text: `含特別警示地址：${[...new Set(alerts.map((r) => r.email))].join('、')}` });
-    if (!internal.length) warnings.push({ level: 'info', text: '無法判斷公司網域，請到擴充套件選項設定' });
+    if (alerts.length) warnings.push({ level: 'high', text: t('warnAlert', [...new Set(alerts.map((r) => r.email))].join(t('sep'))) });
+    if (!internal.length) warnings.push({ level: 'info', text: t('infoNoDomain') });
     return { all, warnings };
   }
 
@@ -341,11 +345,11 @@
       <div class="r">
         <span class="em">${esc(r.email)}</span>
         ${r.name ? `<span class="nm">${esc(r.name)}</span>` : ''}
-        ${r.external ? '<span class="tag ext">外部</span>' : ''}
-        ${r.group ? '<span class="tag grp">群組</span>' : ''}
-        ${r.alert ? '<span class="tag alert">特別警示</span>' : ''}
+        ${r.external ? `<span class="tag ext">${esc(t('tagExternal'))}</span>` : ''}
+        ${r.group ? `<span class="tag grp">${esc(t('tagGroup'))}</span>` : ''}
+        ${r.alert ? `<span class="tag alert">${esc(t('tagAlert'))}</span>` : ''}
       </div>`).join('');
-    return `<div class="sec"><h4>${title}（${list.length}）</h4>${rows}</div>`;
+    return `<div class="sec"><h4>${esc(t('section', title, list.length))}</h4>${rows}</div>`;
   }
 
   function openDialog(sendBtn) {
@@ -367,24 +371,24 @@
     shadow.innerHTML = `
       <style>${CSS}</style>
       <div class="backdrop">
-        <div class="dlg" role="dialog" aria-modal="true" aria-label="確認寄出">
-          <div class="hd">確認寄出（共 ${all.length} 位收件人）</div>
+        <div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(t('dlgAria'))}">
+          <div class="hd">${esc(t.n('dlgTitle', all.length))}</div>
           <div class="bd">
-            <div class="subj">主旨：<b>${esc(subject || '（無主旨）')}</b></div>
+            <div class="subj">${esc(t('subject'))}<b>${esc(subject || t('noSubject'))}</b></div>
             ${high.length ? `<div class="warn">${high.map((w) => `<div>⚠ ${esc(w.text)}</div>`).join('')}</div>` : ''}
             ${info.length ? `<div class="info">${info.map((w) => `<div>ℹ ${esc(w.text)}</div>`).join('')}</div>` : ''}
-            ${renderSection('收件者', recips.to)}
-            ${renderSection('副本', recips.cc)}
-            ${renderSection('密件副本', recips.bcc)}
-            ${renderSection('收件人（欄位不明）', recips.unknown)}
-            ${atts.length ? `<div class="att">📎 附件：${atts.map(esc).join('、')}</div>` : ''}
+            ${renderSection(t('secTo'), recips.to)}
+            ${renderSection(t('secCc'), recips.cc)}
+            ${renderSection(t('secBcc'), recips.bcc)}
+            ${renderSection(t('secUnknown'), recips.unknown)}
+            ${atts.length ? `<div class="att">📎 ${esc(t('attachments'))}${atts.map(esc).join(esc(t('sep')))}</div>` : ''}
           </div>
           <div class="ft">
             ${hold ? '' : '<div class="bar"><i></i></div>'}
             <div class="row">
               <span class="msg"></span>
-              <button class="cancel">取消，返回編輯</button>
-              <button class="primary send">立即寄出</button>
+              <button class="cancel">${esc(t('btnCancel'))}</button>
+              <button class="primary send">${esc(t('btnSendNow'))}</button>
             </div>
           </div>
         </div>
@@ -424,8 +428,8 @@
       if (bar) bar.style.width = '0%';
       let left = FINAL_SECONDS;
       const show = () => {
-        msg.textContent = `含特別警示地址，${left} 秒後寄出。要反悔請按「取消，返回編輯」。`;
-        btn.textContent = `${left} 秒後寄出`;
+        msg.textContent = t('msgFinal', left);
+        btn.textContent = t('btnFinal', left);
       };
       show();
       finalTimer = setInterval(() => {
@@ -437,7 +441,7 @@
     $('.send').addEventListener('click', confirmSend);
 
     if (hold) {
-      msg.textContent = '有警示，不會自動寄出，請確認後手動按「立即寄出」。';
+      msg.textContent = t('msgHold');
     } else {
       // 清單長到一頁顯示不完時，要先捲到最底才開始倒數（仍可直接按「立即寄出」）
       const bd = $('.bd');
@@ -445,8 +449,7 @@
       let waiting = !atBottom();
       const tick = () => {
         if (finalizing) return;                 // 最後倒數中，不要蓋掉訊息
-        msg.textContent = waiting ? '收件人較多，請往下捲到最後確認，才會開始倒數。'
-          : paused ? '已暫停倒數' : `${remaining} 秒後自動寄出（點清單可暫停）`;
+        msg.textContent = waiting ? t('msgScroll') : paused ? t('msgPaused') : t('msgCountdown', remaining);
         if (bar) bar.style.width = `${(remaining / total) * 100}%`;
       };
       tick();
@@ -469,7 +472,7 @@
 
   function reallySend(btn) {
     if (!btn.isConnected) {
-      alert('ReviewSend：找不到原本的傳送按鈕（撰寫視窗可能已關閉），信件沒有寄出。');
+      alert(t('alertButtonGone'));
       return;
     }
     bypass = true;
@@ -538,7 +541,7 @@
       c.attachments = [];
       for (const el of root.querySelectorAll('.dL .vI, [data-attachment-name], input[name="attach"], [download_url]')) {
         const nm = (el.getAttribute('data-attachment-name') || el.textContent || '').trim();
-        c.attachments.push({ tag: el.tagName.toLowerCase(), ext: (nm.match(/.([A-Za-z0-9]{1,6})$/) || [, ''])[1], nameLen: nm.length,
+        c.attachments.push({ tag: el.tagName.toLowerCase(), ext: (nm.match(/\.([A-Za-z0-9]{1,6})$/) || [, ''])[1], nameLen: nm.length,
           via: el.hasAttribute('data-attachment-name') ? 'data-attachment-name' : el.matches('.dL .vI') ? '.dL .vI' : 'other', ...describe(el, root) });
       }
       c.attachmentsRead = readAttachments(root).length;

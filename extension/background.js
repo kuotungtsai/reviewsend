@@ -40,8 +40,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   chrome.action.setBadgeText({ tabId, text: '' });
   chrome.action.setTitle({
     tabId,
-    title: msg.broken ? 'ReviewSend：可能失效，認不出 Gmail 的傳送按鈕'
-      : msg.enabled ? 'ReviewSend：運作中' : 'ReviewSend：已停用'
+    // 文字由分頁裡的 content script 依使用者選的語言產生
+    title: typeof msg.title === 'string' && msg.title ? msg.title.slice(0, 200) : 'ReviewSend'
   });
   iconWithDot(msg.broken ? '#d93025' : msg.enabled ? '#188038' : '#80868b')
     .then((imageData) => chrome.action.setIcon({ tabId, imageData }))

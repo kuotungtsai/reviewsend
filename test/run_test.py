@@ -27,6 +27,9 @@ async def main():
                   '--disable-features=DisableLoadExtensionCommandLineSwitch', '--no-sandbox'])
         await ctx.route('https://mail.google.com/**', lambda r: r.fulfill(status=200, content_type='text/html; charset=utf-8', body=MOCK))
         page = await ctx.new_page()
+        # 介面語言預設跟隨瀏覽器；測試固定用繁體中文，最後再另外驗證英文與語言切換
+        sw = ctx.service_workers[0] if ctx.service_workers else await ctx.wait_for_event('serviceworker')
+        await sw.evaluate("() => chrome.storage.sync.set({ language: 'zh-TW' })")
 
         async def load(scen):
             await page.goto(f'https://mail.google.com/mail/u/0/#{scen}')
@@ -143,7 +146,6 @@ async def main():
         check('legacy markup: recipients still read', t and '3 位收件人' in t and '副本（1）' in t)
 
         # 11. special-alert recipient -> "send now" waits 5 more seconds and can be cancelled
-        sw = ctx.service_workers[0] if ctx.service_workers else await ctx.wait_for_event('serviceworker')
         await sw.evaluate("() => chrome.storage.sync.set({ alertPatterns: 'vip@example.org' })")
         await load('alert')
         await page.click('#send'); await page.wait_for_timeout(300)
@@ -167,6 +169,46 @@ async def main():
         await shadow_click(page, '.send'); await page.wait_for_timeout(300)
         check('group without alert: send-now is still immediate', await page.evaluate('window.__sent') == 1)
         await sw.evaluate("() => chrome.storage.sync.set({ alertPatterns: '' })")
+
+        # 12. English interface
+        await sw.evaluate("() => chrome.storage.sync.set({ language: 'en' })")
+        await load('normal')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('en: title, sections and buttons', t and 'Confirm send (3 recipients)' in t and 'To (2)' in t and 'Cc (1)' in t
+              and 'Cancel, keep editing' in t and 'Send now' in t)
+        check('en: external tag and singular wording', t and 'External' in t and '1 external recipient (customer-a.com)' in t)
+        check('en: countdown text', t and 'Sending in' in t and '秒' not in t)
+        await shadow_click(page, '.cancel'); await page.wait_for_timeout(200)
+        await load('group')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        t = await overlay_text(page)
+        check('en: group warning holds the send', t and 'Includes group address' in t and 'will not send automatically' in t)
+        await shadow_click(page, '.cancel'); await page.wait_for_timeout(200)
+
+        # 13. settings page: language selector switches immediately and is remembered
+        ext_id = sw.url.split('/')[2]
+        opt = await ctx.new_page()
+        await opt.goto(f'chrome-extension://{ext_id}/options.html'); await opt.wait_for_timeout(400)
+        check('options: opens in the saved language (en)', 'Internal domains' in await opt.inner_text('body')
+              and await opt.title() == 'ReviewSend - Settings')
+        await opt.select_option('#language', 'zh-TW'); await opt.wait_for_timeout(300)
+        body = await opt.inner_text('body')
+        check('options: switching to zh-TW updates the page', '公司內部網域' in body and 'Internal domains' not in body)
+        check('options: choice is saved', await sw.evaluate("() => chrome.storage.sync.get('language').then((v) => v.language)") == 'zh-TW')
+        await opt.fill('#internalDomains', 'example.com'); await opt.fill('#tryEmail', 'x@other.org'); await opt.wait_for_timeout(200)
+        check('options: live preview uses the chosen language', '外部' in await opt.inner_text('#tryResult'))
+        await opt.select_option('#language', 'en'); await opt.wait_for_timeout(300)
+        check('options: preview follows a switch back to en', 'External' in await opt.inner_text('#tryResult'))
+        missing = await opt.evaluate("""() => {
+          const zh = ReviewSendI18n.keys('zh-TW'), en = new Set(ReviewSendI18n.keys('en'));
+          const used = [...document.querySelectorAll('[data-i18n],[data-i18n-html],[data-i18n-placeholder]')]
+            .map((e) => e.getAttribute('data-i18n') || e.getAttribute('data-i18n-html') || e.getAttribute('data-i18n-placeholder'));
+          return [...zh.filter((k) => !en.has(k)), ...used.filter((k) => !en.has(k))];
+        }""")
+        check('every text key has an English version', missing == [], str(missing))
+        await opt.close()
+        await sw.evaluate("() => chrome.storage.sync.remove('language')")
 
         await ctx.close()
     failed = [n for n, ok in results if not ok]

@@ -8,6 +8,7 @@ const DEFAULTS = {
 };
 
 const $ = (id) => document.getElementById(id);
+let t = ReviewSendI18n.make('auto');     // 介面文字；讀到語言設定後會換掉
 const EMAIL_RE = /^[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 
 // ---------- 與 content.js 相同的判斷規則，用在即時預覽 ----------
@@ -50,7 +51,7 @@ function applyManaged() {
     const box = $('m-' + id);
     const items = listFrom(managedList(id));
     box.hidden = items.length === 0;
-    box.textContent = items.length ? '由管理員設定（不可移除）：' + items.join('、') : '';
+    box.textContent = items.length ? t('optManagedList', items.join(t('sep'))) : '';
   }
   if (locked.countdown()) $('countdown').value = managed.countdown;
   if (locked.holdOnWarning()) $('holdOnWarning').checked = managed.holdOnWarning;
@@ -69,8 +70,8 @@ function clampCountdown() {
 function renderDomains() {
   const list = listFrom(eff('internalDomains')).map((d) => d.replace(/^@/, ''));
   $('domainLive').textContent = list.length
-    ? `目前視為內部：${list.join('、')}`
-    : '目前留白：會自動使用登入 Gmail 帳號的網域。';
+    ? t('optDomainLive', list.join(t('sep')))
+    : t('optDomainEmpty');
   $('setup').hidden = list.length > 0;
 }
 
@@ -78,7 +79,7 @@ let demoTimer = null;
 function renderCountdown() {
   if (demoTimer) return;
   $('countBar').style.width = '100%';
-  $('countLive').textContent = `確認視窗會顯示「${clampCountdown()} 秒後自動寄出」`;
+  $('countLive').textContent = t('optCountLive', clampCountdown());
 }
 
 function playCountdown() {
@@ -87,7 +88,7 @@ function playCountdown() {
   let left = total;
   const tick = () => {
     $('countBar').style.width = `${(left / total) * 100}%`;
-    $('countLive').textContent = left > 0 ? `${left} 秒後自動寄出（示範，不會真的寄信）` : '示範結束：實際使用時，信會在這個時候寄出。';
+    $('countLive').textContent = left > 0 ? t('optDemoTick', left) : t('optDemoEnd');
   };
   tick();
   demoTimer = setInterval(() => {
@@ -101,8 +102,8 @@ function renderTry() {
   const box = $('tryResult');
   const email = $('tryEmail').value.trim().toLowerCase();
   box.textContent = '';
-  if (!email) { box.textContent = '在上面輸入地址，這裡會顯示判斷結果。'; return; }
-  if (!EMAIL_RE.test(email)) { box.textContent = '請輸入完整的信箱地址。'; return; }
+  if (!email) { box.textContent = t('optTryEmpty'); return; }
+  if (!EMAIL_RE.test(email)) { box.textContent = t('optTryInvalid'); return; }
 
   const internal = listFrom(eff('internalDomains')).map((d) => d.replace(/^@/, ''));
   const domain = email.split('@')[1];
@@ -116,21 +117,21 @@ function renderTry() {
     box.appendChild(s); box.appendChild(document.createTextNode(' '));
   };
   add('em', email);
-  if (external === true) add('tag ext', '外部');
-  if (external === false) add('tag ok', '內部');
-  if (group) add('tag grp', '群組');
-  if (alert) add('tag alert', '特別警示');
+  if (external === true) add('tag ext', t('tagExternal'));
+  if (external === false) add('tag ok', t('tagInternal'));
+  if (group) add('tag grp', t('tagGroup'));
+  if (alert) add('tag alert', t('tagAlert'));
 
   const note = document.createElement('div');
   if (group || alert) {
     note.className = 'warn';
     note.textContent = $('holdOnWarning').checked
-      ? '會出現紅色警示，不會自動寄出，必須手動按「立即寄出」。'
-      : '會出現紅色警示，但仍會倒數後自動寄出（第 5 項沒有勾選）。';
+      ? t('optTryHold')
+      : t('optTryNoHold');
   } else if (external === null) {
-    note.textContent = '第 1 項留白，內部或外部要到 Gmail 裡依登入帳號判斷，這裡無法預覽。';
+    note.textContent = t('optTryNoDomain');
   } else {
-    note.textContent = `沒有紅色警示，${clampCountdown()} 秒後自動寄出。`;
+    note.textContent = t('optTryOk', clampCountdown());
   }
   box.appendChild(note);
 }
@@ -169,6 +170,26 @@ function showStatus(text, isError) {
   statusTimer = setTimeout(() => { $('status').textContent = ''; }, 6000);
 }
 
+// ---------- 語言 ----------
+// 語言是個人偏好：選了立刻生效並儲存，不用按「儲存」，也不會寫進下載的設定檔。
+function setLanguage(pref) {
+  t = ReviewSendI18n.make(pref);
+  ReviewSendI18n.apply(document, t);
+  document.title = t('optTitle');
+  applyManaged();
+  renderAll();
+}
+setLanguage('auto');
+chrome.storage.sync.get({ language: 'auto' }, (v) => {
+  const pref = v && ['zh-TW', 'en'].includes(v.language) ? v.language : 'auto';
+  $('language').value = pref;
+  setLanguage(pref);
+});
+$('language').addEventListener('change', () => {
+  const pref = $('language').value;
+  chrome.storage.sync.set({ language: pref }, () => setLanguage(pref));
+});
+
 // ---------- 載入、儲存 ----------
 // 受管理的設定：不是受管理的瀏覽器時會是空的或回報錯誤，兩種情況都當作沒有
 try {
@@ -199,7 +220,7 @@ $('save').addEventListener('click', () => {
     lastUser = { ...v };
     if (!locked.countdown()) $('countdown').value = v.countdown;
     renderAll();
-    showStatus('已儲存，請重新整理 Gmail 分頁');
+    showStatus(t('optSaved'));
   });
 });
 
@@ -216,19 +237,19 @@ $('exportBtn').addEventListener('click', () => {
   a.download = 'reviewsend-config.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showStatus('已下載設定檔（內容為畫面上目前的設定）');
+  showStatus(t('optExported'));
 });
 
 // 只接受認得的欄位，型別不對就拒絕，避免壞掉的檔案把設定弄亂
 function parseConfig(text) {
   let data;
-  try { data = JSON.parse(text); } catch (_) { throw new Error('不是有效的 JSON 檔'); }
+  try { data = JSON.parse(text); } catch (_) { throw new Error(t('errJson')); }
   const s = data && (data.type === CONFIG_TYPE || LEGACY_TYPES.includes(data.type)) ? data.settings : null;
-  if (!s || typeof s !== 'object') throw new Error('不是這個擴充套件的設定檔');
+  if (!s || typeof s !== 'object') throw new Error(t('errNotConfig'));
   const out = { ...DEFAULTS };
   for (const k of Object.keys(DEFAULTS)) {
     if (!(k in s)) continue;
-    if (typeof s[k] !== typeof DEFAULTS[k]) throw new Error(`欄位 ${k} 的格式不對`);
+    if (typeof s[k] !== typeof DEFAULTS[k]) throw new Error(t('errField', k));
     out[k] = s[k];
   }
   out.countdown = Math.min(120, Math.max(1, Math.round(out.countdown) || DEFAULTS.countdown));
@@ -241,10 +262,10 @@ $('importFile').addEventListener('change', async () => {
   $('importFile').value = '';                 // 讓同一個檔案可以再選一次
   if (!file) return;
   try {
-    if (file.size > 1024 * 1024) throw new Error('檔案太大');
+    if (file.size > 1024 * 1024) throw new Error(t('errTooBig'));
     fillForm(parseConfig(await file.text()));
-    showStatus('已載入設定檔，請確認內容後按「儲存」才會生效');
+    showStatus(t('optImported'));
   } catch (e) {
-    showStatus('無法載入：' + e.message, true);
+    showStatus(t('optImportFailed', e.message), true);
   }
 });

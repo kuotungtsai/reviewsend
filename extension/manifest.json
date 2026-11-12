@@ -2,8 +2,9 @@
   "manifest_version": 3,
   "name": "ReviewSend: Recipient Check for Gmail",
   "short_name": "ReviewSend",
-  "version": "1.0.0",
-  "description": "按下傳送後先列出所有收件人並倒數，確認後才真正寄出。只在本機執行，不傳送任何資料。",
+  "version": "1.1.0",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -25,7 +26,7 @@
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
-      "js": ["content.js"],
+      "js": ["i18n.js", "content.js"],
       "run_at": "document_start",
       "all_frames": false
     }

@@ -1,0 +1,61 @@
+name: Release
+
+# Push a tag like v1.2.0 -> run the tests, build the zip, publish a GitHub Release.
+# "Run workflow" (manual) does the same checks and keeps the zip as a build
+# artifact without publishing anything.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write   # needed to create the release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check the package (and that the tag matches the manifest version)
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then
+            python scripts/package.py --check --tag "$REF_NAME"
+          else
+            python scripts/package.py --check
+          fi
+
+      - name: Install the test browser
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run the tests
+        run: xvfb-run -a python test/run_test.py
+
+      - name: Build the zip
+        run: python scripts/package.py
+
+      - name: Keep the zip as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviewsend-zip
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Publish the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+        run: gh release create "$REF_NAME" dist/*.zip --verify-tag --title "ReviewSend ${REF_NAME#v}" --generate-notes

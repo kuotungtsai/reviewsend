@@ -1,182 +1,189 @@
-# ReviewSend 使用手冊
+# ReviewSend User Guide
 
-這份手冊給實際使用的人看，不需要懂程式。照著做大約 5 分鐘可以完成安裝與設定。
+**English** | [繁體中文](USER_GUIDE.zh-TW.md)
 
-## 1. 這是什麼
+This guide is for the people who use ReviewSend day to day. No technical knowledge is needed, and installing and setting it up takes about 5 minutes.
 
-ReviewSend（完整名稱 ReviewSend: Recipient Check for Gmail）是一個 Chrome 擴充套件。裝好之後，你在 Gmail 按下「傳送」時，信不會馬上寄出，而是先跳出一個視窗，把這封信的所有收件人、主旨和附件列給你看，倒數幾秒後才真正寄出。
+## 1. What it is
 
-<img src="images/dialog-hero.png" alt="按下傳送後的確認視窗" width="620">
+ReviewSend (full name: ReviewSend: Recipient Check for Gmail) is a Chrome extension. Once it is installed, clicking Send in Gmail does not send the email straight away. A dialog first shows you every recipient, the subject and the attachments, and the email is only sent after a few seconds' countdown.
 
-它幫你避免這些情況：
+<img src="images/en/dialog-hero.png" alt="The confirmation dialog shown after clicking Send" width="620">
 
-- 收件人打錯，或自動完成選到同名的另一個人。
-- 不小心把公司內部的信寄給外部的人。
-- 不小心寄給全公司的群組信箱。
-- 同一封信同時寄給兩家不同的客戶。
+It helps you avoid:
 
-它不會做這些事：
+- A mistyped recipient, or autocomplete picking a different person with the same name.
+- Sending an internal email to someone outside the company.
+- Sending to a company-wide group mailbox by accident.
+- Sending one email to two different customers at once.
 
-- 不會把你的信件內容或收件人傳到任何地方，所有檢查都在你自己的電腦上完成。
-- 不會修改你的信。
-- 不會擋住你寄信，任何時候都可以按「立即寄出」。
+What it does not do:
 
-## 2. 安裝
+- It does not send your email content or recipients anywhere. All checks happen on your own computer.
+- It does not change your email.
+- It does not stop you sending. You can click "Send now" at any time.
 
-你會拿到一個壓縮檔 `reviewsend-x.x.x.zip`。
+## 2. Install
 
-1. 把壓縮檔解壓縮到一個固定的資料夾，例如「文件」底下。**安裝後這個資料夾不能刪除或搬走**，否則擴充套件會失效。
-2. 打開 Chrome，在網址列輸入 `chrome://extensions` 後按 Enter。
-3. 打開頁面右上角的「開發人員模式」開關（下圖 1）。
-4. 按左上角出現的「載入未封裝項目」（下圖 2）。
+You will be given a zip file named `reviewsend-x.x.x.zip`.
 
-   <img src="images/install.png" alt="擴充功能頁面的開發人員模式與載入未封裝項目" width="760">
+1. Extract the zip into a folder that will stay put, for example under Documents. **Do not delete or move this folder after installing**, or the extension will stop working.
+2. Open Chrome, type `chrome://extensions` in the address bar and press Enter.
+3. Turn on "Developer mode" at the top right (1 in the picture).
+4. Click "Load unpacked", which appears at the top left (2 in the picture).
 
-5. 在跳出的視窗中，選剛才解壓縮出來的資料夾，按「選擇資料夾」。
-6. 頁面上出現黃色盾牌圖示的「ReviewSend」卡片，就是安裝成功。這時會自動開啟設定頁。
-7. 按網址列右邊的拼圖圖示，在「ReviewSend」旁邊按圖釘，把它固定在工具列上，方便之後查看狀態。
+   <img src="images/en/install.png" alt="Developer mode and Load unpacked on the Extensions page" width="760">
 
-> 之後每次開啟 Chrome，可能會看到「停用開發人員模式擴充功能」的提醒，按關閉即可，不要按停用。
+5. In the window that opens, choose the folder you just extracted and click "Select Folder".
+6. A "ReviewSend" card with a yellow shield icon appears on the page. That means it is installed, and the settings page opens automatically.
+7. Click the puzzle icon to the right of the address bar, then the pin next to "ReviewSend", so the icon stays in the toolbar where you can see its status.
 
-## 3. 第一次設定
+> Each time Chrome starts you may see a reminder to "Disable developer mode extensions". Close it; do not click Disable.
 
-安裝後會自動開啟設定頁。之後想再打開，點工具列上的盾牌圖示，再按「開啟設定」。
+## 3. First-time setup
 
-<img src="images/settings.png" alt="設定頁" width="760">
+The settings page opens automatically after installing. To open it again later, click the shield icon in the toolbar and then "Open settings".
 
-### 最快的方式：使用別人給你的設定檔
+<img src="images/en/settings.png" alt="The settings page" width="760">
 
-如果同事或 IT 給了你一個 `reviewsend-config.json`：
+The interface follows your browser's language by default. To change it, use "語言 / Language" at the top right of the settings page and pick "English" or "繁體中文". It takes effect immediately.
 
-1. 在設定頁最下面按「上傳設定檔」，選那個檔案。
-2. 確認上方的欄位已經自動填好。
-3. 按「儲存」。
+### The quickest way: use a settings file someone gave you
 
-### 自己設定
+If a colleague or your IT team gave you a `reviewsend-config.json`:
 
-只有第 1 項一定要確認，其他用預設值就可以。
+1. Click "Upload settings" at the bottom of the settings page and choose that file.
+2. Check that the fields above have been filled in.
+3. Click "Save".
 
-1. **公司內部網域**：填公司信箱 `@` 後面的部分，例如信箱是 `name@example.com` 就填 `example.com`。這是用來判斷誰是「外部」收件人。留白的話，會自動使用你登入 Gmail 的帳號網域。
-2. **倒數秒數**：確認視窗出現後等幾秒自動寄出，預設 15 秒。
-3. **群組地址**：一次會寄給很多人的信箱，預設已包含 `all@`、`staff@` 等常見的名稱。公司有其他群組信箱可以加進來。
-4. **特別警示名單**：你想特別小心的收件人或網域，預設是空的。
-5. **開關**：建議兩項都保持勾選。
+### Setting it up yourself
 
-填好之後：
+Only item 1 really needs checking. The defaults are fine for the rest.
 
-1. 在「試試看」輸入幾個地址（例如同事的、客戶的），看結果是不是你預期的。這一步不會寄信。
-2. 按「儲存」。
-3. **回到 Gmail 分頁，按重新整理**。沒有重新整理的話，設定不會生效。
+1. **Internal domains**: the part after `@` in your company address. If your address is `name@example.com`, enter `example.com`. This is how the extension decides who is "External". If left empty, the domain of the Gmail account you are signed in to is used.
+2. **Countdown**: how many seconds the dialog waits before sending. The default is 15.
+3. **Group addresses**: mailboxes that reach many people at once. Common names such as `all@` and `staff@` are included by default. Add any other group mailboxes your company has.
+4. **Alert list**: recipients or domains you want to be extra careful with. Empty by default.
+5. **Switches**: keeping both checked is recommended.
 
-## 4. 確認有在運作
+When you are done:
 
-打開 Gmail，看工具列上的盾牌圖示右下角：
+1. Type a few addresses into "Try it" (a colleague's, a customer's) and see whether the result is what you expect. This sends nothing.
+2. Click "Save".
+3. **Go back to your Gmail tab and reload it.** The settings do not take effect until you reload.
 
-<img src="images/icon-states.png" alt="工具列圖示的四種狀態" width="620">
+## 4. Check that it is working
 
-| 圖示 | 代表 | 你該做什麼 |
+Open Gmail and look at the bottom right of the shield icon in the toolbar:
+
+<img src="images/en/icon-states.png" alt="The four states of the toolbar icon" width="620">
+
+| Icon | Meaning | What to do |
 |---|---|---|
-| 綠色圓點 | 運作中 | 不用做什麼 |
-| 灰色圓點 | 已停用 | 到設定頁勾選「啟用寄出確認」並儲存 |
-| 紅色圓點 | 可能失效 | 寄信前請自己仔細確認收件人，並通知提供這個套件的人 |
-| 沒有圓點 | 這個分頁沒有作用 | 如果這是 Gmail 分頁，按重新整理 |
+| Green dot | Active | Nothing |
+| Grey dot | Turned off | Check "Enable send confirmation" on the settings page and save |
+| Red dot | May not be working | Check your recipients carefully yourself before sending, and tell whoever gave you the extension |
+| No dot | Not active on this tab | If this is a Gmail tab, reload it |
 
-點一下盾牌圖示，也會用文字告訴你目前的狀態：
+Clicking the shield icon also tells you the current status in words:
 
-<img src="images/popup.png" alt="點工具列圖示顯示運作中" width="300">
+<img src="images/en/popup.png" alt="The toolbar popup showing Active" width="300">
 
-最直接的確認方法：寄一封信給自己。按「傳送」後有跳出確認視窗，就是正常。
+The most direct check: send an email to yourself. If the dialog appears after you click Send, everything is fine.
 
-## 5. 日常使用
+## 5. Everyday use
 
-照平常的方式寫信，按「傳送」或 Ctrl+Enter，就會看到確認視窗：
+Write your email as usual and click Send or press Ctrl+Enter. You will see the confirmation dialog:
 
-<img src="images/dialog-normal.png" alt="一般情況的確認視窗" width="600">
+<img src="images/en/dialog-normal.png" alt="The confirmation dialog in the normal case" width="600">
 
-請看這幾個地方：
+Look at these things:
 
-- **標題的收件人總數**：和你預期的人數一樣嗎？
-- **收件者、副本、密件副本**：每個地址都是你要寄的人嗎？
-- **紅色的「外部」標籤**：這些人不是公司內部的，確定要寄給他們嗎？
-- **主旨和附件**：有沒有忘記附檔，或附錯檔案？
+- **The number of recipients in the title**: is it what you expected?
+- **To, Cc and Bcc**: is every address someone you mean to send to?
+- **Red "External" tags**: these people are outside your company. Are you sure?
+- **Subject and attachments**: did you forget an attachment, or attach the wrong file?
 
-接下來你可以：
+Then you can:
 
-| 你想做的事 | 操作 |
+| What you want | What to do |
 |---|---|
-| 確認沒問題，讓它自己寄出 | 什麼都不用按，倒數結束就寄出 |
-| 不想等 | 按「立即寄出」 |
-| 發現有問題，要回去修改 | 按「取消，返回編輯」，或按鍵盤的 Esc |
-| 想慢慢檢查，不要倒數 | 在收件人清單上點一下，倒數會暫停 |
+| Everything is fine, let it send | Nothing. It sends when the countdown ends |
+| You do not want to wait | Click "Send now" |
+| Something is wrong and you want to fix it | Click "Cancel, keep editing", or press Esc |
+| You want to check slowly without the countdown | Click the recipient list; the countdown pauses |
 
-取消之後信不會寄出，會回到撰寫視窗，內容都還在。
+After cancelling, nothing is sent. You are back in the compose window with everything still there.
 
-## 6. 出現紅色警示時
+## 6. When there is a red warning
 
-<img src="images/dialog-warning.png" alt="有紅色警示的確認視窗" width="600">
+<img src="images/en/dialog-warning.png" alt="The confirmation dialog with a red warning" width="600">
 
-視窗上方出現紅色區塊時，**不會倒數，也不會自動寄出**。你必須看過之後，自己按「立即寄出」或「取消，返回編輯」。
+When there is a red box at the top of the dialog, **there is no countdown and nothing is sent automatically**. You have to look, then click "Send now" or "Cancel, keep editing" yourself.
 
-會出現紅色警示的情況：
+Red warnings appear in these cases:
 
-| 警示內容 | 意思 | 建議 |
+| Warning | What it means | Suggestion |
 |---|---|---|
-| 含群組地址 | 收件人裡有群組信箱，會寄給很多人 | 確認真的要寄給整個群組 |
-| 含特別警示地址 | 收件人在你的特別警示名單裡 | 再確認一次內容和附件。按「立即寄出」後還會再倒數 5 秒，這段時間可以按「取消，返回編輯」反悔 |
-| 同時寄給多個不同的外部網域 | 這封信同時寄給兩家以上的外部單位 | 確認沒有把甲客戶的信也寄給乙客戶 |
-| 讀不到任何收件人 | 套件看不懂目前的 Gmail 畫面 | 自己到撰寫視窗確認收件人；並通知提供這個套件的人 |
+| Includes group address | A recipient is a group mailbox that reaches many people | Make sure you really mean to send to the whole group |
+| Includes alert-list address | A recipient is on your alert list | Check the content and attachments once more. After "Send now" there is a further 5-second countdown, during which "Cancel, keep editing" still stops it |
+| Going to several different external domains | The email goes to two or more outside organisations at once | Make sure customer A's email is not also going to customer B |
+| No recipients could be read | The extension does not understand the current Gmail screen | Check the recipients in the compose window yourself, and tell whoever gave you the extension |
 
-## 7. 收件人很多時
+## 7. When there are many recipients
 
-<img src="images/dialog-long.png" alt="收件人很多的確認視窗" width="600">
+<img src="images/en/dialog-long.png" alt="The confirmation dialog with many recipients" width="600">
 
-收件人多到視窗一頁顯示不完時，倒數不會開始，下方會提示你先往下捲。把清單捲到最底之後才開始倒數，確保你看過每一個收件人。
+When the recipients do not fit on one screen, the countdown does not start and the text at the bottom asks you to scroll down. The countdown starts only once you have scrolled to the end, so that every recipient has been in front of you.
 
-如果你確定沒問題、不想捲，也可以直接按「立即寄出」。
+If you are sure and do not want to scroll, you can click "Send now" straight away.
 
-## 8. 常見問題
+## 8. Common questions
 
-**按了傳送，沒有跳出確認視窗，信直接寄出去了。**<br>
-先看盾牌圖示的狀態（第 4 節）。最常見的原因是安裝或更新後沒有重新整理 Gmail 分頁。另外，從「排定傳送」寄出的信不會被攔截。
+**I clicked Send, no dialog appeared, and the email went out.**<br>
+Check the shield icon's status first (section 4). The most common cause is not reloading the Gmail tab after installing or updating. Also, emails sent with "Schedule send" are not intercepted.
 
-**信已經寄出去了才發現有問題，怎麼辦？**<br>
-Gmail 本身的「取消傳送」仍然有效。信寄出後，畫面左下角會短暫出現「取消傳送」，在它消失之前按下去就能收回。可以在 Gmail 的設定裡把取消傳送的時間調到最長 30 秒。
+**The email has gone and only now do I see a problem. What can I do?**<br>
+Gmail's own "Undo send" still works. After an email is sent, "Undo" appears briefly at the bottom left of the screen; click it before it disappears to take the email back. You can lengthen the undo period to as much as 30 seconds in Gmail's settings.
 
-**盾牌圖示出現紅色圓點。**<br>
-代表 Gmail 的畫面可能改版了，套件認不出傳送按鈕，這時信可能會直接寄出而不會跳視窗。寄信前請自己仔細確認收件人，並通知提供這個套件的人。
+**The shield icon shows a red dot.**<br>
+Gmail's screen may have changed and the extension no longer recognises the Send button, so emails may go out without the dialog. Check your recipients carefully yourself before sending, and tell whoever gave you the extension.
 
-**這個套件會看到我的信件內容嗎？**<br>
-它只讀取撰寫視窗裡的收件人、主旨和附件檔名，用來顯示在確認視窗上。這些資料不會離開你的電腦，套件沒有任何連線到外部的功能。
+**Can the extension see the content of my emails?**<br>
+It only reads the recipients, the subject and the attachment file names in the compose window, so that it can show them in the dialog. This information never leaves your computer; the extension has no way of connecting to anything outside.
 
-**我想暫時關掉它。**<br>
-到設定頁取消勾選「啟用寄出確認」並儲存，圖示會變成灰色圓點。要恢復時再勾回來。如果這個選項是灰色不能改，代表是公司的 IT 統一設定的。
+**I want to turn it off for a while.**<br>
+Uncheck "Enable send confirmation" on the settings page and save. The icon shows a grey dot. Check it again to turn it back on. If the option is greyed out, your company's IT team has set it for everyone.
 
-**每次都要等 15 秒，太久了。**<br>
-可以到設定頁把倒數秒數改短，或者每次確認後直接按「立即寄出」。不建議設得太短，否則會來不及看。
+**Waiting 15 seconds every time is too long.**<br>
+Shorten the countdown on the settings page, or click "Send now" each time once you have checked. Setting it very short is not recommended, because you will not have time to read.
 
-**有些設定欄位是灰色的，旁邊寫「由管理員設定」。**<br>
-這是公司 IT 統一下發的設定，你不能修改或移除，但名單類的欄位你仍然可以再加自己的項目。
+**Some settings are greyed out and say "Set by your administrator".**<br>
+These are pushed by your company's IT team. You cannot change or remove them, but for the list fields you can still add entries of your own.
 
-**我在手機上寄信，會有確認視窗嗎？**<br>
-不會。這個套件只對電腦版 Chrome 上的 Gmail 網頁有效，手機 App 不受保護。
+**Does the dialog appear when I send from my phone?**<br>
+No. The extension only works on Gmail in desktop Chrome. The mobile apps are not protected.
 
-**我有兩個 Chrome 使用者設定檔（例如工作和個人）。**<br>
-每個設定檔要各自安裝、各自設定一次。
+**I have two Chrome profiles (for example work and personal).**<br>
+Install and set it up once in each profile.
 
-**怎麼更新到新版？**<br>
-把新版壓縮檔解壓縮，覆蓋到原本的資料夾，再到 `chrome://extensions` 按「ReviewSend」卡片上的重新載入按鈕，最後重新整理 Gmail 分頁。你的設定會保留。
+**Can I switch the interface to Chinese?**<br>
+Yes. "語言 / Language" at the top right of the settings page offers Auto, 繁體中文 and English. It is a personal preference and is not written to the downloaded settings file.
 
-**怎麼移除？**<br>
-到 `chrome://extensions`，在「ReviewSend」卡片上按「移除」。
+**How do I update to a new version?**<br>
+Extract the new zip over the original folder, click the reload button on the "ReviewSend" card at `chrome://extensions`, then reload your Gmail tab. Your settings are kept.
 
-## 9. 快速參考
+**How do I remove it?**<br>
+Go to `chrome://extensions` and click "Remove" on the "ReviewSend" card.
 
-| 情況 | 會發生什麼 |
+## 9. Quick reference
+
+| Situation | What happens |
 |---|---|
-| 一般的信 | 列出收件人，倒數後自動寄出 |
-| 有外部收件人 | 標示「外部」並提示，仍會倒數後自動寄出 |
-| 有群組地址、特別警示地址，或多個外部網域 | 紅色警示，不自動寄出，要手動按 |
-| 收件人一頁顯示不完 | 捲到最底才開始倒數 |
-| 按 Esc 或「取消，返回編輯」 | 不寄出，回到撰寫視窗 |
-| 按「立即寄出」 | 馬上寄出 |
-| 排定傳送、手機 App | 不會被攔截 |
+| An ordinary email | Recipients are listed, then it sends after the countdown |
+| External recipients | Tagged "External" with a note; still sends after the countdown |
+| A group address, an alert-list address, or several external domains | Red warning; not sent automatically; you have to click |
+| Recipients do not fit on one screen | The countdown starts only after scrolling to the end |
+| Esc or "Cancel, keep editing" | Nothing is sent; back to the compose window |
+| "Send now" | Sent immediately |
+| Schedule send, mobile apps | Not intercepted |

@@ -2,10 +2,13 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>ReviewSend - 設定</title>
+<title>ReviewSend</title>
 <style>
   body { font: 14px/1.6 "Noto Sans TC", "Microsoft JhengHei", Roboto, Arial, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 20px 48px; color: #1f1f1f; }
   h1 { font-size: 22px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .lang { font-size: 13px; color: #444; white-space: nowrap; }
+  .lang select { font: inherit; padding: 3px 6px; margin-left: 6px; }
   .intro { color: #444; }
   #setup { background: #fef7e0; color: #7a4f01; border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
 
@@ -51,118 +54,88 @@
 </style>
 </head>
 <body>
-  <h1>ReviewSend - 設定</h1>
-  <p class="intro">按下 Gmail 的「傳送」後，會先跳出視窗列出所有收件人並倒數，確認後才真正寄出。每一項設定右邊都有說明，改了之後可以在最下面的「試試看」馬上看到效果。</p>
+  <div class="top">
+    <h1 data-i18n="optTitle">ReviewSend</h1>
+    <label class="lang">語言 / Language
+      <select id="language">
+        <option value="auto" data-i18n="optLangAuto">Auto</option>
+        <option value="zh-TW">繁體中文</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+  </div>
+  <p class="intro" data-i18n="optIntro"></p>
 
-  <div id="setup" hidden>第一次使用？請先填寫第 1 項「公司內部網域」再按最下面的「儲存」。</div>
+  <div id="setup" data-i18n="optSetup" hidden></div>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">1</span>公司內部網域</h2>
+      <h2><span class="step">1</span><span data-i18n="optH1"></span></h2>
       <div class="managed" id="m-internalDomains" hidden></div>
       <textarea id="internalDomains" placeholder="example.com"></textarea>
       <div class="live" id="domainLive"></div>
     </div>
-    <aside class="help">
-      <b>用來判斷誰是「外部」收件人。</b>
-      <ul>
-        <li>一行一個，例如 <code>example.com</code>。</li>
-        <li>不在這份清單裡的網域，收件人會標 <span class="tag ext">外部</span>。</li>
-        <li>子網域（例如 <code>tw.example.com</code>）也算內部。</li>
-        <li>留白時，會改用目前登入 Gmail 帳號的網域。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelp1"></aside>
   </section>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">2</span>倒數秒數</h2>
-      <input type="number" id="countdown" min="1" max="120"> 秒 <span class="lock" id="l-countdown" hidden>由管理員設定</span>
+      <h2><span class="step">2</span><span data-i18n="optH2"></span></h2>
+      <input type="number" id="countdown" min="1" max="120"> <span data-i18n="optSeconds"></span> <span class="lock" id="l-countdown" data-i18n="optLocked" hidden></span>
       <div class="bar"><i id="countBar"></i></div>
       <div class="live" id="countLive"></div>
-      <button type="button" class="ghost" id="countPlay">播放倒數示範</button>
+      <button type="button" class="ghost" id="countPlay" data-i18n="optPlay"></button>
     </div>
-    <aside class="help">
-      <b>確認視窗出現後，等多久自動寄出。</b>
-      <ul>
-        <li>倒數中可以按「立即寄出」或「取消，返回編輯」。</li>
-        <li>按 Esc 等於取消；點一下收件人清單可暫停倒數。</li>
-        <li>收件人多到一頁顯示不完時，要先捲到清單最底才開始倒數。</li>
-        <li>可設 1 到 120 秒。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelp2"></aside>
   </section>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">3</span>群組地址</h2>
+      <h2><span class="step">3</span><span data-i18n="optH3"></span></h2>
       <div class="managed" id="m-groupPatterns" hidden></div>
       <textarea id="groupPatterns"></textarea>
     </div>
-    <aside class="help">
-      <b>一次會寄給很多人的地址。</b>命中時標 <span class="tag grp">群組</span> 並出現紅色警示。
-      <ul>
-        <li><code>all@</code>：任何網域的 all 信箱。</li>
-        <li><code>team@example.com</code>：只比對這個地址。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelp3"></aside>
   </section>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">4</span>特別警示名單</h2>
+      <h2><span class="step">4</span><span data-i18n="optH4"></span></h2>
       <div class="managed" id="m-alertPatterns" hidden></div>
       <textarea id="alertPatterns" placeholder="boss@example.com&#10;@competitor.com"></textarea>
     </div>
-    <aside class="help">
-      <b>你想特別小心的收件人。</b>命中時標 <span class="tag alert">特別警示</span> 並出現紅色警示；按「立即寄出」後還會再倒數 5 秒，可以反悔。
-      <ul>
-        <li><code>boss@example.com</code>：只比對這個地址。</li>
-        <li><code>@competitor.com</code>：整個網域（含子網域）。</li>
-        <li><code>ceo@</code>：任何網域的 ceo 信箱。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelp4"></aside>
   </section>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">5</span>開關</h2>
-      <label class="chk"><input type="checkbox" id="holdOnWarning"> 有紅色警示時不自動寄出 <span class="lock" id="l-holdOnWarning" hidden>由管理員設定</span></label>
-      <label class="chk"><input type="checkbox" id="enabled"> 啟用寄出確認 <span class="lock" id="l-enabled" hidden>由管理員設定</span></label>
+      <h2><span class="step">5</span><span data-i18n="optH5"></span></h2>
+      <label class="chk"><input type="checkbox" id="holdOnWarning"> <span data-i18n="optHold"></span> <span class="lock" id="l-holdOnWarning" data-i18n="optLocked" hidden></span></label>
+      <label class="chk"><input type="checkbox" id="enabled"> <span data-i18n="optEnabled"></span> <span class="lock" id="l-enabled" data-i18n="optLocked" hidden></span></label>
     </div>
-    <aside class="help">
-      <ul>
-        <li><b>紅色警示</b>包含：群組地址、特別警示名單、同時寄給多個外部網域、讀不到收件人。勾選後遇到這些情況必須手動按「立即寄出」。</li>
-        <li><b>啟用寄出確認</b>取消勾選後，Gmail 會恢復成按下傳送就直接寄出。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelp5"></aside>
   </section>
 
   <section class="block" data-block>
     <div>
-      <h2><span class="step">試</span>試試看</h2>
-      <input type="text" id="tryEmail" placeholder="輸入一個收件人地址，例如 someone@gmail.com">
+      <h2><span class="step" data-i18n="optStepTry"></span><span data-i18n="optHTry"></span></h2>
+      <input type="text" id="tryEmail" data-i18n-placeholder="optTryPlaceholder">
       <div id="tryResult"></div>
     </div>
-    <aside class="help">
-      <b>不用真的寄信就能確認設定。</b>
-      <ul>
-        <li>輸入任何地址，會用上面目前填的內容（還沒儲存也算）判斷它會被標成什麼。</li>
-        <li>確認結果符合預期後，再按「儲存」。</li>
-      </ul>
-    </aside>
+    <aside class="help" data-i18n-html="optHelpTry"></aside>
   </section>
 
   <div class="actions">
-    <button id="save">儲存</button>
-    <button type="button" class="ghost" id="exportBtn">下載設定檔</button>
-    <button type="button" class="ghost" id="importBtn">上傳設定檔</button>
+    <button id="save" data-i18n="optSave"></button>
+    <button type="button" class="ghost" id="exportBtn" data-i18n="optExport"></button>
+    <button type="button" class="ghost" id="importBtn" data-i18n="optImport"></button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
     <span id="status"></span>
   </div>
-  <p class="intro" style="font-size:13px">「下載設定檔」會把畫面上目前的設定存成一個 JSON 檔，可以傳給同事或備份；「上傳設定檔」會把檔案內容填進上面的欄位，確認後按「儲存」才會生效。設定檔裡會包含你填的公司網域與名單，分享前請留意。</p>
-  <p class="intro" style="font-size:13px">儲存後請重新整理已開啟的 Gmail 分頁。所有檢查都在你的電腦上完成，不會把信件內容或收件人傳到任何地方。從「排定傳送」寄出的信與手機 App 不會被攔截。</p>
+  <p class="intro" style="font-size:13px" data-i18n="optNote1"></p>
+  <p class="intro" style="font-size:13px" data-i18n="optNote2"></p>
 
+  <script src="i18n.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
