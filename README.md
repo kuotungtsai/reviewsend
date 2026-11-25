@@ -10,7 +10,8 @@ After you click Send in Gmail (or press Ctrl+Enter), a dialog first lists every 
 - External recipients are tagged "External", group addresses (all@ and the like) are tagged "Group", and addresses on your own list are tagged "Alert".
 - When there is a red warning (a group address, an alert-list address, more than one external domain, or no readable recipients) the email is not sent automatically; you have to click "Send now" yourself. This can be turned off in the settings.
 - If a recipient is on the alert list, "Send now" starts a further 5-second countdown during which you can still cancel.
-- Click anywhere in the list to pause the countdown; Esc cancels.
+- "Pause" (or a click anywhere in the list) pauses the countdown and "Resume" continues it; Esc cancels.
+- Within To, Cc and Bcc, recipients are grouped by domain: external domains first in alphabetical order, then internal ones.
 - If the recipient list does not fit on one screen, the countdown starts only after you scroll to the end. "Send now" still works straight away.
 - The interface is available in English and Traditional Chinese. It follows the browser language by default and can be switched in the settings.
 
@@ -130,7 +131,7 @@ Write your email as usual and click Send or press Ctrl+Enter. The email is not s
 - External recipients have a red "External" tag, and the yellow box lists the external domains.
 - The blue bar and the text at the bottom show the seconds left. The email is sent when the countdown ends.
 - "Send now" skips the countdown. "Cancel, keep editing" or Esc sends nothing and returns to the compose window.
-- Click the recipient list to pause the countdown and take your time.
+- Click "Pause" or the recipient list to pause the countdown and take your time; "Resume" continues it.
 
 ### Red warning: not sent automatically
 
@@ -167,10 +168,12 @@ reviewsend/
 │   └── popup.html / popup.js       ← status popup for the toolbar icon
 ├── docs/               ← user guide, screenshots (Chinese ones in images/, English in images/en/), policy example
 ├── scripts/
-│   └── package.py      ← checks and builds the installable zip
+│   ├── package.py      ← checks and builds the installable zip
+│   └── check_private.py ← keeps personal and company data out of commits
+├── .githooks/          ← runs check_private.py on commit and on push
 ├── test/
 │   ├── mock_gmail.html ← a mock Gmail compose window
-│   └── run_test.py     ← Playwright tests (47 checks)
+│   └── run_test.py     ← Playwright tests (52 checks)
 └── .github/workflows/release.yml  ← tests, packages and publishes when a version tag is pushed
 ```
 
@@ -182,7 +185,7 @@ playwright install chromium
 python test/run_test.py
 ```
 
-The tests use the mock page to check: the dialog opens on Send, automatic send after the countdown, send now, cancel, Ctrl+Enter, Esc, group and multi-domain warnings, pausing by clicking the list, the "more send options" menu not being intercepted, scrolling to the end for long lists, the English interface, and switching languages. A full run takes about 2.5 minutes.
+The tests use the mock page to check: the dialog opens on Send, automatic send after the countdown, send now, cancel, Ctrl+Enter, Esc, group and multi-domain warnings, pausing and resuming, sorting recipients by domain, the "more send options" menu not being intercepted, scrolling to the end for long lists, the English interface, and switching languages. A full run takes about 2.5 minutes.
 
 If your computer's security settings do not allow Playwright's downloaded Chromium to run, use an installed browser instead: set the `CHROME_PATH` environment variable to the Edge executable before running. Recent versions of Google Chrome do not allow loading an extension from the command line, so Chrome cannot be used for these tests.
 
@@ -219,6 +222,22 @@ To check without writing a file: `python scripts/package.py --check`
 3. GitHub runs the tests, builds the zip, and creates the release on the Releases page with the zip attached. If the tag and the version in `manifest.json` differ, or the tests fail, nothing is published.
 
 You can also run the "Release" workflow by hand from the Actions page on GitHub. It does the same checks and builds the zip, which is kept as an artifact of that run without publishing anything.
+
+## Keeping personal data out of the repository
+
+This repository is public, so `scripts/check_private.py` checks every change for things that should not be published: home folders with a user name in them, real e-mail addresses (the made-up ones used in the tests and screenshots are allowed), private network addresses, network share paths, internal domain names, keys and tokens, and metadata hidden inside PNG files. New or changed pictures are listed so that you look at each one.
+
+Turn it on once in your clone:
+
+```
+git config core.hooksPath .githooks
+```
+
+After that it runs on the staged changes and the message of every commit, and on every file and every commit message before a push. Anything found blocks the commit or the push. The release workflow runs the same check.
+
+Words of your own (your employer, a customer, your computer's name) go in `.git/sensitive-words.txt`, which is never committed: one word or `/regular expression/` per line, matched ignoring case. A line such as `!LICENSE` names a file those words are not applied to.
+
+To run it by hand: `python scripts/check_private.py --all`
 
 ## Limitations
 

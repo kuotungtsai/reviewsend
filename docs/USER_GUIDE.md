@@ -100,7 +100,7 @@ Write your email as usual and click Send or press Ctrl+Enter. You will see the c
 Look at these things:
 
 - **The number of recipients in the title**: is it what you expected?
-- **To, Cc and Bcc**: is every address someone you mean to send to?
+- **To, Cc and Bcc**: is every address someone you mean to send to? Addresses on the same domain are listed together, external ones first.
 - **Red "External" tags**: these people are outside your company. Are you sure?
 - **Subject and attachments**: did you forget an attachment, or attach the wrong file?
 
@@ -111,7 +111,7 @@ Then you can:
 | Everything is fine, let it send | Nothing. It sends when the countdown ends |
 | You do not want to wait | Click "Send now" |
 | Something is wrong and you want to fix it | Click "Cancel, keep editing", or press Esc |
-| You want to check slowly without the countdown | Click the recipient list; the countdown pauses |
+| You want to check slowly without the countdown | Click "Pause" (or the recipient list). "Resume" continues the countdown |
 
 After cancelling, nothing is sent. You are back in the compose window with everything still there.
 

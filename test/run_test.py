@@ -102,6 +102,25 @@ async def main():
         await page.wait_for_timeout(16000)
         check('click list pauses countdown', await page.evaluate('window.__sent') == 0 and '已暫停' in (await overlay_text(page) or ''))
 
+        # 7b. pause button: pause, then resume and let it send
+        await shadow_click(page, '.cancel'); await page.wait_for_timeout(200)
+        await load('normal')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        await shadow_click(page, '.pause'); await page.wait_for_timeout(16000)
+        t = await overlay_text(page) or ''
+        check('pause button pauses countdown', await page.evaluate('window.__sent') == 0 and '已暫停' in t and '繼續倒數' in t)
+        await shadow_click(page, '.pause'); await page.wait_for_timeout(500)
+        check('resume button resumes countdown', '秒後自動寄出' in (await overlay_text(page) or ''))
+        await page.wait_for_timeout(15500)
+        check('sent after resuming', await page.evaluate('window.__sent') == 1)
+
+        # 7c. recipients grouped by domain: external first (by domain), internal last, original order within a domain
+        await load('sort')
+        await page.click('#send'); await page.wait_for_timeout(300)
+        order = await page.evaluate("() => [...document.getElementById('gsg-overlay-host').shadowRoot.querySelectorAll('.r .em')].map((e) => e.textContent)")
+        check('recipients sorted by domain', order == ['pm@customer-a.com', 'pm@customer-b.com', 'x@customer-b.com', 'zed@example.com', 'amy@example.com'], str(order))
+        check('no pause button when held', await page.evaluate("() => !document.getElementById('gsg-overlay-host').shadowRoot.querySelector('.pause')"))
+
         # 8. dropdown arrow not intercepted
         await shadow_click(page, '.cancel'); await page.wait_for_timeout(200)
         await page.click('#more'); await page.wait_for_timeout(200)

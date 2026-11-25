@@ -19,10 +19,15 @@ jobs:
       contents: write   # needed to create the release
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the personal-data check reads every commit message
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Check that no personal data is in the files or the history
+        run: python scripts/check_private.py --all
 
       - name: Check the package (and that the tag matches the manifest version)
         env:

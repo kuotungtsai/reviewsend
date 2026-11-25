@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Before anything leaves this computer, check every file and every commit and
+# tag message up to HEAD once more.
+python scripts/check_private.py --all || exit 1

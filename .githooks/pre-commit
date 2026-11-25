@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Personal and company data (home folders, e-mail addresses, private network
+# addresses, keys, and the words in <git dir>/sensitive-words.txt) must not be committed.
+python scripts/check_private.py || exit 1

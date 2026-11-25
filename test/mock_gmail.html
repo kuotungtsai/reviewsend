@@ -28,6 +28,7 @@
   const S = {
     normal: { to: [['bob@example.com','Bob'], ['pm@customer-a.com','Alice PM']], cc: [['carol.lin@example.com','Carol Lin']] },
     group:  { to: [['newhire@example.net','王小明']], cc: [['all@example.com','全公司']] },
+    sort:   { to: [['zed@example.com','Zed'], ['pm@customer-b.com','B'], ['amy@example.com','Amy'], ['pm@customer-a.com','A'], ['x@customer-b.com','X']], cc: [] },
     mixed:  { to: [['pm@customer-a.com','A'], ['pm@customer-b.com','B']], cc: [] },
     // 展開狀態下刪掉一位收件人：膠囊已更新，藏起來的摘要還留著舊地址
     stale:  { to: [['bob@example.com','Bob'], ['pm@customer-a.com','Alice PM']], cc: [['carol.lin@example.com','Carol Lin']], summaryExtra: [['gone@removed.example','Gone']] },

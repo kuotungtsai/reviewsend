@@ -295,6 +295,14 @@
     return { all, warnings };
   }
 
+  // 同一欄裡把相同網域的收件人排在一起：外部網域在前（依網域字母順序），內部在後；同網域維持原本順序
+  function sortByDomain(list) {
+    const dom = (r) => r.email.split('@')[1] || '';
+    return list.map((r, i) => [r, i]).sort((a, b) =>
+      (a[0].external ? 0 : 1) - (b[0].external ? 0 : 1) || (dom(a[0]) < dom(b[0]) ? -1 : dom(a[0]) > dom(b[0]) ? 1 : 0) || a[1] - b[1]
+    ).map((x) => x[0]);
+  }
+
   // ---------- 對話框 ----------
   let overlayHost = null;
   let bypass = false;
@@ -328,6 +336,8 @@
     .bar { height: 4px; background: #e8eaed; border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
     .bar i { display: block; height: 100%; background: #0b57d0; width: 100%; transition: width 1s linear; }
     .row { display: flex; align-items: center; gap: 10px; }
+    .row button { white-space: nowrap; flex: none; }
+    button.pause { padding: 8px 14px; }
     .msg { flex: 1; color: #444; }
     button { font: inherit; border-radius: 999px; padding: 8px 18px; cursor: pointer; border: 1px solid #747775; background: #fff; color: #0b57d0; }
     button.primary { background: #0b57d0; color: #fff; border-color: #0b57d0; }
@@ -357,6 +367,7 @@
     const root = composeRootOf(sendBtn) || document.body;
     const recips = readRecipients(root);
     const { all, warnings } = analyze(recips);
+    for (const k of ['to', 'cc', 'bcc', 'unknown']) recips[k] = sortByDomain(recips[k]);
     const subject = readSubject(root);
     const atts = readAttachments(root);
     const high = warnings.filter((w) => w.level === 'high');
@@ -387,6 +398,7 @@
             ${hold ? '' : '<div class="bar"><i></i></div>'}
             <div class="row">
               <span class="msg"></span>
+              ${hold ? '' : `<button class="pause">${esc(t('btnPause'))}</button>`}
               <button class="cancel">${esc(t('btnCancel'))}</button>
               <button class="primary send">${esc(t('btnSendNow'))}</button>
             </div>
@@ -425,6 +437,7 @@
       if (timer) { clearInterval(timer); timer = null; }        // 停掉原本的倒數，改跑最後這幾秒
       const btn = $('.send');
       btn.disabled = true;
+      if ($('.pause')) $('.pause').remove();
       if (bar) bar.style.width = '0%';
       let left = FINAL_SECONDS;
       const show = () => {
@@ -447,9 +460,12 @@
       const bd = $('.bd');
       const atBottom = () => bd.scrollTop + bd.clientHeight >= bd.scrollHeight - 4;
       let waiting = !atBottom();
+      const pauseBtn = $('.pause');
       const tick = () => {
         if (finalizing) return;                 // 最後倒數中，不要蓋掉訊息
         msg.textContent = waiting ? t('msgScroll') : paused ? t('msgPaused') : t('msgCountdown', remaining);
+        pauseBtn.textContent = t(paused ? 'btnResume' : 'btnPause');
+        pauseBtn.disabled = waiting;
         if (bar) bar.style.width = `${(remaining / total) * 100}%`;
       };
       tick();
@@ -464,6 +480,7 @@
         tick();
       }, 1000);
       $('.bd').addEventListener('click', () => { paused = true; tick(); });
+      pauseBtn.addEventListener('click', () => { paused = !paused; tick(); });
     }
 
     // 預設焦點放在「取消」，避免連按 Enter 直接寄出
